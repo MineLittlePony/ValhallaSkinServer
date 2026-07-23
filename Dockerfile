@@ -12,7 +12,7 @@ ENV UV_NO_DEFAULT_GROUPS=1 \
     UV_LOCKED=1 \
     UV_NO_MANAGED_PYTHON=1
 
-COPY --from=ghcr.io/astral-sh/uv:0.11.19 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.31 /uv /uvx /bin/
 
 COPY . /app
 
