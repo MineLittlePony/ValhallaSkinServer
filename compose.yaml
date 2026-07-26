@@ -1,0 +1,60 @@
+services:
+  postgres:
+    image: postgres:18
+    restart: always
+    shm_size: 128mb
+    environment:
+      - POSTGRES_DB=valhalla
+      - POSTGRES_PASSWORD=database
+
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+    volumes:
+      - postgres-data:/var/lib/postgresql
+
+  minio:
+    image: pgsty/minio
+    command: server /data --console-address :9001
+
+    volumes:
+      - minio-data:/data
+    ports:
+      - 9000:9000
+      - 9001:9001
+
+  valhalla:
+    build: .
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+psycopg://postgres:database@postgres:5432/valhalla
+      - AWS_ENDPOINT_URL=http://localhost:9000
+      - AWS_ACCESS_KEY_ID=minioadmin
+      - AWS_SECRET_ACCESS_KEY=minioadmin
+      - AWS_DEFAULT_REGION=us-east-1
+      - TEXTURES_BUCKET=hdskins
+      - TEXTURES_URL=http://localhost:9000/hdskins/textures/
+      - VERIFY_AWS_CREDENTIALS=0
+      - PORT=8000
+    ports:
+      - 8000:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+
+    develop:
+      watch:
+        - path: valhalla
+          action: sync+restart
+          initial_sync: true
+          target: /app/valhalla
+
+volumes:
+  postgres-data:
+  minio-data:
