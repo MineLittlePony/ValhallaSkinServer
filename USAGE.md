@@ -14,13 +14,15 @@ Logging in via Xbox Live uses OAuth2. If the server is configured with an Azure
 client id and secret, and CORS is configured for your app, logging in can be as
 simple as browsing to `/api/v1/auth/xbox`.
 
+See [Microsoft Authentication](https://minecraft.wiki/w/Microsoft_authentication)
+
 ### Minecraft
 
 In order to authenticate in the Minecraft client, we need to mimick the Multiplayer login
 protocol. This allows us to verify your Minecraft account without needing to transmit your
 Minecraft access token to an untrusted server.
 
-For details, see [wiki.vg](https://wiki.vg/Protocol_Encryption#Authentication)
+For details, see [Mojang API on minecraft.wiki](https://minecraft.wiki/w/Mojang_API#Server)
 
 There are three steps involved to authenticate with Mojang.
 
