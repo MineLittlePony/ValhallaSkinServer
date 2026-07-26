@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
@@ -65,6 +66,7 @@ async def redirect_http_to_https(
     return await call_next(request)
 
 
+app.add_middleware(CORSMiddleware, allow_origins=["*"])
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
 
 app.include_router(api.router, prefix="/api")
