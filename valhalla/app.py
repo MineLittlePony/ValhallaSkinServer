@@ -20,7 +20,7 @@ async def app_lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
     async with engine.begin() as session:
         await session.run_sync(models.Base.metadata.create_all)
 
-    if settings.textures_bucket:
+    if settings.textures_bucket and settings.verify_aws_credentials:
         from .files import verify_aws_credentials
 
         verify_aws_credentials()
