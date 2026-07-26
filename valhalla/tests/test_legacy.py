@@ -24,8 +24,14 @@ def build_request_kwargs(file: str | Path) -> tuple[str, dict]:
 )
 @pytest.mark.httpx_mock(can_send_already_matched_responses=True)
 def test_legacy_upload(
-    steve_uri: str | Path, client: TestClient, user: TestUser
+    steve_uri: tuple[str, Path] | Path | str,
+    client: TestClient,
+    user: TestUser,
+    httpx_mock: HTTPXMock,
 ) -> None:
+    if isinstance(steve_uri, tuple):
+        steve_uri, file = steve_uri
+        httpx_mock.add_response(url=steve_uri, content=file.read_bytes())
     method, kwargs = build_request_kwargs(steve_uri)
     resp = client.request(
         method, f"/api/v1/user/{user.uuid}/skin", headers=user.auth_header, **kwargs
