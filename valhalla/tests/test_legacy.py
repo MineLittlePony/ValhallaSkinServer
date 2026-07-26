@@ -2,6 +2,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from pytest_httpx import HTTPXMock
 
 from .conftest import TestClient, TestUser
 from .test_app import steve_file, steve_hash, steve_url
@@ -20,7 +21,6 @@ def build_request_kwargs(file: str | Path) -> tuple[str, dict]:
 @pytest.mark.parametrize(
     "steve_uri",
     [(steve_url, steve_file), steve_file],
-    indirect=True,
 )
 @pytest.mark.httpx_mock(can_send_already_matched_responses=True)
 def test_legacy_upload(
@@ -51,10 +51,17 @@ def test_legacy_upload_wrong_user(
 @pytest.mark.parametrize(
     "steve_uri",
     [(steve_url, steve_file), steve_file],
-    indirect=True,
 )
 @pytest.mark.httpx_mock(can_send_already_matched_responses=True)
-def test_legacy_v0(steve_uri: str | Path, client: TestClient, user: TestUser) -> None:
+def test_legacy_v0(
+    steve_uri: tuple[str, Path] | Path | str,
+    client: TestClient,
+    user: TestUser,
+    httpx_mock: HTTPXMock,
+) -> None:
+    if isinstance(steve_uri, tuple):
+        steve_uri, file = steve_uri
+        httpx_mock.add_response(url=steve_uri, content=file.read_bytes())
     method, kwargs = build_request_kwargs(steve_uri)
     resp = client.request(
         method, f"/api/user/{user.uuid}/skin", headers=user.auth_header, **kwargs

@@ -84,6 +84,7 @@ omit = [
 filterwarnings = [
     "ignore:'asyncio\\.iscoroutinefunction' is deprecated and slated for removal in Python 3\\.16;:DeprecationWarning"
 ]
+addopts = ["-p", "valhalla.tests._pytest_plugin"]
 
 [tool.mypy]
 plugins = [

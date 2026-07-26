@@ -3,13 +3,14 @@ from io import BytesIO
 from pathlib import Path
 
 import pytest
+from pytest_httpx import HTTPXMock
 
 from ..config import settings
 from .conftest import TestClient, TestUser, assets
 
 textures_url = "http://testserver/textures/"
 steve_file = assets / "good/64x64.png"
-steve_url = "http://assets.mojang.com/SkinTemplates/steve.png"
+steve_url = "https://assets.mojang.com/SkinTemplates/steve.png"
 steve_hash = textures_url + steve_file.with_suffix(".txt").read_text().strip()
 
 
@@ -27,12 +28,17 @@ def build_request_kwargs(file: str | Path) -> tuple[str, dict]:
 @pytest.mark.parametrize(
     "steve_uri",
     [(steve_url, steve_file), steve_file],
-    indirect=True,
 )
 @pytest.mark.httpx_mock(can_send_already_matched_responses=True)
 def test_texture_upload_post(
-    steve_uri: Path | str, client: TestClient, user: TestUser
+    steve_uri: Path | tuple[str, Path] | str,
+    client: TestClient,
+    user: TestUser,
+    httpx_mock: HTTPXMock,
 ) -> None:
+    if isinstance(steve_uri, tuple):
+        steve_uri, file = steve_uri
+        httpx_mock.add_response(url=steve_uri, content=file.read_bytes())
     method, kwargs = build_request_kwargs(steve_uri)
     upload_resp = client.request(
         method, "/api/v1/textures", headers=user.auth_header, **kwargs
