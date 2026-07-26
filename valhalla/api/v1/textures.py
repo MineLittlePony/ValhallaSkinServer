@@ -2,7 +2,7 @@ from collections.abc import AsyncGenerator, AsyncIterable
 from typing import Annotated, Any
 
 import anyio.to_thread
-import httpx
+import httpx2
 from anyio import TemporaryFile
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile
 from pydantic import BaseModel, Json
@@ -34,11 +34,11 @@ async def get_texture(
 
 
 async def download_file(url: str, max_size: int) -> bytes:
-    async with httpx.AsyncClient() as http:
+    async with httpx2.AsyncClient() as http:
         try:
             head_response = await http.head(url)
             head_response.raise_for_status()
-        except httpx.HTTPError as e:
+        except httpx2.HTTPError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Error fetching file: {e}",

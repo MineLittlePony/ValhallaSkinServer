@@ -119,8 +119,7 @@ async def xbox_login_callback(
         expires = timedelta(days=365)
         token = auth.token_from_user(user, expire_in=expires)
 
-        response = RedirectResponse("/")
-        response.headers["Authorization"] = f"Bearer {token}"
+        response = RedirectResponse("/docs")
         response.set_cookie(
             "token",
             token,

@@ -1,6 +1,6 @@
 from uuid import UUID
 
-import httpx
+import httpx2
 from fastapi import HTTPException
 
 from .schemas import BaseModel
@@ -23,7 +23,7 @@ async def has_joined(*, username: str, server_id: str) -> HasJoinedResponse:
         "username": username,
         "serverId": server_id,
     }
-    async with httpx.AsyncClient() as client:
+    async with httpx2.AsyncClient() as client:
         response = await client.get(_VALIDATE, params=params)
         if response.is_success:
             try:

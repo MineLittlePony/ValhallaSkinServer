@@ -4,7 +4,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any, overload
 from uuid import UUID
 
-import httpx
+import httpx2
 from pydantic import AnyHttpUrl, BaseModel
 
 XBOX_AUTH_BASE = "https://{0}.auth.xboxlive.com/{0}/{1}"
@@ -94,7 +94,7 @@ class XboxAuth(BaseModel):
 
 
 async def login_with_xbox(xbl_access_token: str) -> MinecraftProfile:
-    async with httpx.AsyncClient() as client:
+    async with httpx2.AsyncClient() as client:
 
         async def auth_xbl(access_token: str) -> XboxAuth:
             response = await client.post(
