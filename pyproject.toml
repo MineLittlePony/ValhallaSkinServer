@@ -79,6 +79,10 @@ branch = true
 omit = [
     ".vscode*",
 ]
+[tool.pytest]
+filterwarnings = [
+    "ignore:'asyncio\\.iscoroutinefunction' is deprecated and slated for removal in Python 3\\.16;:DeprecationWarning"
+]
 
 [tool.mypy]
 plugins = [
