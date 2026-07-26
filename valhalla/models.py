@@ -23,7 +23,7 @@ class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
     uuid: Mapped[UUID] = mapped_column(unique=True)
-    name: Mapped[str] = mapped_column()
+    name: Mapped[str | None] = mapped_column()
 
     textures: Mapped[list[Texture]] = relationship(
         back_populates="user", init=False, lazy="selectin", repr=False

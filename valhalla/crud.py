@@ -29,6 +29,14 @@ class CRUD:
         )
         return result.scalar()
 
+    async def get_user_by_name(self, name: str) -> models.User | None:
+        result = await self.db.execute(
+            select(models.User)
+            .where(func.lower(models.User.name) == name.lower())
+            .limit(1)
+        )
+        return result.scalar()
+
     async def get_user_by_uuid(self, uuid: UUID) -> models.User | None:
         result = await self.db.execute(
             select(models.User).where(models.User.uuid == uuid).limit(1)
@@ -92,15 +100,26 @@ class CRUD:
 
         return dict(results)
 
+    async def _clear_duplicate_names(self, name: str) -> None:
+        await self.db.execute(
+            update(models.User)
+            .where(
+                func.lower(models.User.name) == name.lower(),
+            )
+            .values({models.User.name: None})
+        )
+
     async def get_or_create_user(self, uuid: UUID, name: str) -> models.User:
         user = await self.get_user_by_uuid(uuid)
         if user is None:
+            await self._clear_duplicate_names(name)
             user = models.User(uuid=uuid, name=name)
             self.db.add(user)
 
             await self.db.commit()
             await self.db.refresh(user)
         elif user.name != name:
+            await self._clear_duplicate_names(name)
             user.name = name
 
             await self.db.commit()

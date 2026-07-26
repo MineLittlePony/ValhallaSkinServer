@@ -1,12 +1,15 @@
 import json
 from io import BytesIO
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 from pytest_httpx import HTTPXMock
+from sqlalchemy import func, select
 
+from .. import models
 from ..config import settings
-from .conftest import TestClient, TestUser, assets
+from .conftest import TestClient, TestingSessionLocal, TestUser, assets
 
 textures_url = "http://testserver/textures/"
 steve_file = assets / "good/64x64.png"
@@ -57,9 +60,19 @@ def test_texture_upload_post(
     assert anon_resp.status_code == 200, anon_resp.json()
     assert anon_resp.json()["textures"] == textures
 
+    byname_resp = client.get(f"/api/v1/user/lookup/name/{user.name}")
+    assert byname_resp.status_code == 200, byname_resp.json()
+    assert byname_resp.json()["textures"] == textures
+
+    byname_resp = client.get(f"/api/v1/user/lookup/name/{user.name.lower()}")
+    assert byname_resp.status_code == 200, byname_resp.json()
+    assert byname_resp.json()["textures"] == textures
+
 
 def test_unknown_user_textures(client: TestClient, user: TestUser) -> None:
     resp = client.get(f"/api/v1/user/{user.uuid}")
+    assert resp.status_code == 404
+    resp = client.get(f"/api/v1/user/lookup/name/{user.name}6")
     assert resp.status_code == 404
 
 
@@ -155,3 +168,19 @@ def test_skin_delete(client: TestClient, user: TestUser) -> None:
     )
 
     assert resp.status_code == 200
+
+
+async def test_multiple_users_with_same_name(client: TestClient) -> None:
+    id1 = TestUser(uuid4(), "username")
+    id2 = TestUser(uuid4(), "UserName")
+
+    client.post("/api/v1/textures", headers=id1.auth_header)
+    client.post("/api/v1/textures", headers=id2.auth_header)
+
+    async with TestingSessionLocal() as con:
+        result = await con.scalars(
+            select(models.User).where(func.lower(models.User.name) == "username")
+        )
+        user = result.one()
+        assert user.uuid == id2.uuid
+        assert user.name == id2.name
