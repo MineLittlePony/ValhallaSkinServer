@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class S3PathInfo(PathInfo):
-    __slots__ = ("pathobj")
+    __slots__ = ("pathobj",)
 
     def __init__(self, path: S3Path) -> None:
         self.pathobj = path
