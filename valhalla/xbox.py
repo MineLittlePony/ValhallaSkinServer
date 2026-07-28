@@ -42,7 +42,7 @@ def get_x_error_message(err: XSTSError) -> str:
 
 
 class XboxLoginError(Exception):
-    def __init__(self, err: XSTSError):
+    def __init__(self, err: XSTSError) -> None:
         super().__init__(get_x_error_message(err))
         self.err = err
 

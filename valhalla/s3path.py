@@ -249,7 +249,7 @@ class S3Path(WritablePath, ReadablePath):
 
 
 class FileWriter(BytesIO):
-    def __init__(self, close_callback: Callable[[BytesIO], None]):
+    def __init__(self, close_callback: Callable[[BytesIO], None]) -> None:
         super().__init__()
         self.callback = close_callback
 

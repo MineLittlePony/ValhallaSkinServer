@@ -61,7 +61,7 @@ class Texture(BaseModel):
 class UserTextures(BaseModel):
     timestamp: Timestamp = Field(default_factory=partial(datetime.now, UTC))
     profile_id: UUID
-    profile_name: str
+    profile_name: str | None
     textures: dict[str, Texture]
 
     model_config = ConfigDict(
@@ -103,7 +103,7 @@ class TextureHistoryEntry(BaseModel):
 
 class UserTextureHistory(BaseModel):
     profile_id: UUID
-    profile_name: str
+    profile_name: str | None
     textures: dict[str, list[TextureHistoryEntry]]
 
     model_config = ConfigDict(

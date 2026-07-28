@@ -52,8 +52,8 @@ dev = [
 ]
 lint = [
     "boto3-stubs[s3,sts]>=1.36.6",
-    "mypy>=1.14.1",
     "ruff>=0.15.6",
+    "ty>=0.0.64",
     "types-pillow>=10.2.0.20240822",
 ]
 
@@ -87,15 +87,6 @@ filterwarnings = [
 ]
 addopts = ["-p", "valhalla.tests._pytest_plugin"]
 
-[tool.mypy]
-plugins = [
-    "pydantic.mypy",
-]
-
-[[tool.mypy.overrides]]
-module = ["authlib.*", "expiringdict"]
-ignore_missing_imports = true
-
 [tool.ruff]
 [tool.ruff.lint]
 select = [
@@ -103,6 +94,3 @@ select = [
     "YTT", "FBT", "ASYNC", "C4", "DTZ",
     "PIE", "RET", "SLF", "FLY", "PERF", "RUF"
 ]
-
-[tool.ruff.lint.flake8-annotations]
-mypy-init-return = true

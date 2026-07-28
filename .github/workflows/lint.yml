@@ -35,6 +35,6 @@ jobs:
       run: |
         uv run pytest --cov --cov-report=term --cov-report=xml
 
-    - name: Type Check with mypy
+    - name: Type Check with ty
       run: |
-        uv run mypy valhalla
+        uv run ty check
