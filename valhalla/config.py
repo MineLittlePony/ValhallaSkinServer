@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     textures_bucket: str | None = None
     textures_path: str = "textures"
     textures_url: AnyHttpUrl | None = None
+    s3_bucket_content_type: str = "image/png"
 
     xbox_live_client_id: str | None = None
     xbox_live_client_secret: str | None = None

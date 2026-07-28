@@ -821,6 +821,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pathlib-abc"
+version = "0.5.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d6/cb/448649d7f25d228bf0be3a04590ab7afa77f15e056f8fa976ed05ec9a78f/pathlib_abc-0.5.2.tar.gz", hash = "sha256:fcd56f147234645e2c59c7ae22808b34c364bb231f685ddd9f96885aed78a94c", size = 33342, upload-time = "2025-10-10T18:37:20.524Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b1/29/c028a0731e202035f0e2e0bfbf1a3e46ad6c628cbb17f6f1cc9eea5d9ff1/pathlib_abc-0.5.2-py3-none-any.whl", hash = "sha256:4c9d94cf1b23af417ce7c0417b43333b06a106c01000b286c99de230d95eefbb", size = 19070, upload-time = "2025-10-10T18:37:19.437Z" },
+]
+
+[[package]]
 name = "pathspec"
 version = "1.1.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1474,6 +1483,7 @@ dependencies = [
     { name = "httpx2" },
     { name = "itsdangerous" },
     { name = "joserfc" },
+    { name = "pathlib-abc" },
     { name = "pillow" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
@@ -1516,6 +1526,7 @@ requires-dist = [
     { name = "httpx2", specifier = ">=2.9.1" },
     { name = "itsdangerous", specifier = ">=2.2.0" },
     { name = "joserfc", specifier = ">=1.6.3" },
+    { name = "pathlib-abc", specifier = ">=0.5.2" },
     { name = "pillow", specifier = ">=11.1.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2.4" },
     { name = "pydantic", specifier = ">=2.10.6" },

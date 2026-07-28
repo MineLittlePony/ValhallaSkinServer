@@ -32,6 +32,7 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0.37",
     "joserfc>=1.6.3",
     "httpx2>=2.9.1",
+    "pathlib-abc>=0.5.2",
 ]
 requires-python = "==3.14.*"
 
@@ -100,7 +101,7 @@ ignore_missing_imports = true
 select = [
     "F", "E", "W", "B", "SIM", "I", "ANN", "UP",
     "YTT", "FBT", "ASYNC", "C4", "DTZ",
-    "PIE", "RET", "SLF", "TRY", "FLY", "PERF", "RUF"
+    "PIE", "RET", "SLF", "FLY", "PERF", "RUF"
 ]
 
 [tool.ruff.lint.flake8-annotations]
