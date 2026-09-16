@@ -1,7 +1,7 @@
 import logging
 import os
 from collections.abc import AsyncGenerator, Awaitable, Callable
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager
 from typing import Any
 
 import boto3
@@ -84,26 +84,3 @@ if settings.textures_bucket is None:
     os.makedirs(settings.textures_path, exist_ok=True)
     static_textures = StaticFiles(directory=settings.textures_path)
     app.mount("/textures", static_textures, name="textures")
-
-
-if os.getenv("HDSKINS_DEBUG"):
-    access = logging.getLogger("uvicorn.access")
-
-    @app.middleware("http")
-    async def debug_middleware(
-        request: Request, call_next: Callable[[Request], Awaitable[Response]]
-    ) -> Response:
-        uagent = request.headers.get("user-agent")
-        body = await request.body()
-        with suppress(ValueError):
-            body = body.decode()
-        if request.client:
-            access.info(
-                "IP='%s:%d' URL=%r UserAgent=%r Body=%r",
-                request.client.host,
-                request.client.port,
-                request.url,
-                uagent,
-                body,
-            )
-        return await call_next(request)

@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "valhalla"
-version = "1.2.1"
+version = "1.2.0"
 description = "An alternative skin server for Minecraft supporting metadata and hd textures"
 authors = [
     { name = "Matthew Messinger", email = "mattmess1221@gmail.com" },
