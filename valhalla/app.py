@@ -22,10 +22,10 @@ log = logging.getLogger("uvicorn.error")
 
 @asynccontextmanager
 async def app_lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
-    if settings.online_mode is True:
+    if settings.online_mode is False:
         log.warning(
-            "enable_offline is set to true. This is insecure and it's recommended to"
-            " set it to false."
+            "online_mode is set to false. This is insecure and it's recommended to"
+            " set it to true."
         )
 
     async with engine.begin() as session:
