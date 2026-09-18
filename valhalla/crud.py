@@ -1,6 +1,3 @@
-# sqlalchemy isn't 100% with type checking, so disable it in pyright
-# mypy has it disabled in pyproject.toml
-# pyright: reportGeneralTypeIssues=false
 from collections import defaultdict
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -9,11 +6,10 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends
+from sqlalchemy import between, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
-from sqlalchemy.sql import update
-from sqlalchemy.sql.expression import func
+from sqlalchemy.sql.functions import current_timestamp
 
 from . import models
 from .db import get_db
@@ -82,15 +78,23 @@ class CRUD:
         at: datetime | None = None,
         show_duplicates: bool = False,
     ) -> dict[str, list[models.Texture]]:
-        result = await self.db.stream_scalars(
+        query = (
             select(models.Texture)
             .options(selectinload(models.Texture.upload))
-            .where(
-                models.Texture.user_id == user.id,
-                *(() if at is None else (models.Texture.end_time < at,)),
-            )
+            .where(models.Texture.user_id == user.id)
             .order_by(models.Texture.tex_type, models.Texture.id.desc())
         )
+
+        if at is not None:
+            query = query.where(
+                between(
+                    at,
+                    models.Texture.start_time,
+                    func.coalesce(models.Texture.end_time, current_timestamp()),
+                )
+            )
+
+        result = await self.db.stream_scalars(query)
 
         uploads_seen = defaultdict[str, set[int]](set)
         results = defaultdict[str, list[models.Texture]](list)
