@@ -1,5 +1,5 @@
 from collections import defaultdict
-from collections.abc import AsyncIterator, Iterable
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Annotated
@@ -39,7 +39,7 @@ class CRUD:
         )
         return result.scalar()
 
-    async def resolve_uuids(self, uuids: Iterable[UUID]) -> AsyncIterator[models.User]:
+    async def resolve_uuids(self, uuids: list[UUID]) -> AsyncIterator[models.User]:
         for uid in uuids:
             usr = await self.get_user_by_uuid(uid)
             if usr:

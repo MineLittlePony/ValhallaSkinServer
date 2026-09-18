@@ -151,14 +151,13 @@ class TexturePost(BaseModel):
 
 
 class BulkRequest(BaseModel):
-    uuids: set[UUID] = Field(min_length=2)
+    uuids: list[UUID]
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
                 "uuids": [
                     "51aa42eb7-aef4-b6ab-758a-b0fadac5ab5",
-                    "51aa42eb7-aef4-b6ab-758a-b0fadac5ab6",
                 ]
             }
         }
