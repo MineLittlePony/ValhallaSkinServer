@@ -80,6 +80,7 @@ class CRUD:
         *,
         limit: int | None = None,
         at: datetime | None = None,
+        show_duplicates: bool = False,
     ) -> dict[str, list[models.Texture]]:
         result = await self.db.stream_scalars(
             select(models.Texture)
@@ -89,14 +90,18 @@ class CRUD:
                 *(() if at is None else (models.Texture.end_time < at,)),
             )
             .order_by(models.Texture.tex_type, models.Texture.id.desc())
-            .group_by(models.Texture.tex_type, models.Texture.id),
         )
 
-        results: dict[str, list[models.Texture]] = defaultdict(list)
+        uploads_seen = defaultdict[str, set[int]](set)
+        results = defaultdict[str, list[models.Texture]](list)
         async for item in result:
             if item.tex_type in results and len(results[item.tex_type]) == limit:
                 continue
+
+            if not show_duplicates and item.upload_id in uploads_seen[item.tex_type]:
+                continue
             results[item.tex_type].append(item)
+            uploads_seen[item.tex_type].add(item.upload_id)
 
         return dict(results)
 
