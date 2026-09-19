@@ -43,9 +43,7 @@ class CRUD:
         self, uuids: Iterable[UUID]
     ) -> Sequence[models.User]:
         result = await self.db.scalars(
-            select(models.User)
-            .where(models.User.uuid.in_(uuids))
-            .distinct(models.User.uuid)
+            select(models.User).where(models.User.uuid.in_(uuids))
         )
         return result.all()
 

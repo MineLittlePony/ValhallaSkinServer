@@ -38,5 +38,5 @@ def test_bulk_users(client: TestClient, users: list[TestUser]) -> None:
     assert resp.status_code == 200
 
     data = resp.json()
-    original_users = [user["profileId"] for user in data["users"]]
-    assert original_users == uuids
+    original_users = {user["profileId"] for user in data["users"]}
+    assert original_users == set(uuids)
