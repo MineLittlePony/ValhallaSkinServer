@@ -116,10 +116,6 @@ def test_very_large_upload(client: TestClient, user: TestUser) -> None:
     assert resp.status_code == 413, resp.json()  # Request entity too large
 
 
-def test_env() -> None:
-    assert not settings.env.isprod
-
-
 def test_bad_namespaced_tex_type(client: TestClient, user: TestUser) -> None:
     resp = client.put(
         "/api/v1/textures",

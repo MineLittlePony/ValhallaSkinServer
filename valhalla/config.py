@@ -1,5 +1,4 @@
 import secrets
-from enum import Enum
 from typing import Literal
 from urllib.parse import urlparse
 
@@ -27,16 +26,6 @@ def resolve_db(url: str) -> str:
     return url
 
 
-class Env(Enum):
-    PRODUCTION = "prod"
-    DEVELOPING = "dev"
-    TESTING = "test"
-
-    @property
-    def isprod(self) -> bool:
-        return self is Env.PRODUCTION
-
-
 def generate_server_id() -> str:
     s = secrets.token_urlsafe(20)
     s = s.replace("_", "")
@@ -44,8 +33,6 @@ def generate_server_id() -> str:
 
 
 class Settings(BaseSettings):
-    env: Env = Field(default=Env.PRODUCTION, exclude=True)
-
     online_mode: bool = Field(
         default=True,
         description="""

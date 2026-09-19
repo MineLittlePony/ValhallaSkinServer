@@ -12,13 +12,12 @@ from pytest_httpx import HTTPXMock
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from ..app import app
-from ..config import Env, settings
+from ..config import settings
 from ..db import get_db
 from ..models import Base
 
 assets = Path(__file__).parent / "assets"
 
-settings.env = Env.TESTING
 
 SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
