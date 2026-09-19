@@ -1,6 +1,8 @@
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from functools import partial
-from typing import Annotated
+from typing import Annotated, Self
+from urllib.parse import urljoin
 from uuid import UUID
 
 from fastapi import File, Form, HTTPException, UploadFile, status
@@ -9,6 +11,8 @@ from pydantic import BaseModel as PydanticBaseModel
 from pydantic.alias_generators import to_camel
 from pydantic.functional_serializers import PlainSerializer
 from pydantic.functional_validators import AfterValidator
+
+from . import models
 
 
 def serialize_datetime(dt: datetime) -> int:
@@ -79,6 +83,25 @@ class UserTextures(BaseModel):
             }
         }
     )
+
+    @classmethod
+    def from_sql(
+        cls,
+        user: models.User,
+        textures: Mapping[str, models.Texture],
+        textures_url: str,
+    ) -> Self:
+        return cls(
+            profile_id=user.uuid,
+            profile_name=user.name,
+            textures={
+                k: Texture(
+                    url=urljoin(textures_url, v.upload.hash),
+                    metadata=v.meta,
+                )
+                for k, v in textures.items()
+            },
+        )
 
 
 class TextureHistoryEntry(BaseModel):

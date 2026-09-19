@@ -1,6 +1,5 @@
 from datetime import datetime
 from typing import Annotated
-from urllib.parse import urljoin
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Path, Request
@@ -86,14 +85,4 @@ async def get_user_textures(
     textures_url: str,
 ) -> schemas.UserTextures:
     textures = await crud.get_user_textures(user, at=at)
-    return schemas.UserTextures(
-        profile_id=user.uuid,
-        profile_name=user.name,
-        textures={
-            k: schemas.Texture(
-                url=urljoin(textures_url, v.upload.hash),
-                metadata=v.meta,
-            )
-            for k, v in textures.items()
-        },
-    )
+    return schemas.UserTextures.from_sql(user, textures, textures_url)

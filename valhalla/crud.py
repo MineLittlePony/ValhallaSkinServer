@@ -1,5 +1,5 @@
 from collections import defaultdict
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Annotated
@@ -39,6 +39,16 @@ class CRUD:
         )
         return result.scalar()
 
+    async def get_users_by_uuid_bulk(
+        self, uuids: Iterable[UUID]
+    ) -> Sequence[models.User]:
+        result = await self.db.scalars(
+            select(models.User)
+            .where(models.User.uuid.in_(uuids))
+            .distinct(models.User.uuid)
+        )
+        return result.all()
+
     async def resolve_uuids(self, uuids: list[UUID]) -> AsyncIterator[models.User]:
         for uid in uuids:
             usr = await self.get_user_by_uuid(uid)
@@ -69,6 +79,26 @@ class CRUD:
             )
         )
         return {item.tex_type: item for item in result.scalars()}
+
+    async def get_user_textures_bulk(
+        self, users: Iterable[models.User]
+    ) -> Mapping[UUID, Mapping[str, models.Texture]]:
+        user_ids = [u.id for u in users]
+        result = await self.db.scalars(
+            select(models.Texture)
+            .join(models.User)
+            .options(
+                selectinload(models.Texture.upload),
+                selectinload(models.Texture.user),
+            )
+            .where(models.Texture.user_id.in_(user_ids))
+            .order_by(models.User.uuid, models.Texture.tex_type)
+        )
+
+        all_users = defaultdict[UUID, dict[str, models.Texture]](dict)
+        for texture in result:
+            all_users[texture.user.uuid][texture.tex_type] = texture
+        return dict(all_users)
 
     async def get_user_textures_history(
         self,
