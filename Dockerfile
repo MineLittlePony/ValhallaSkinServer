@@ -30,5 +30,4 @@ CMD alembic upgrade head && \
     fastapi run \
     --port $PORT \
     --proxy-headers \
-    --forwarded-allow-ips '*' \
-    --workers 4
+    --forwarded-allow-ips '*'
