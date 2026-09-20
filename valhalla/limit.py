@@ -1,12 +1,12 @@
-import os
-
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
-limiter = Limiter(key_func=get_remote_address, storage_uri=os.getenv("REDIS_URL"))
+from .config import settings
+
+limiter = Limiter(key_func=get_remote_address, storage_uri=settings.redis_url)
 
 
 def _rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded) -> Response:

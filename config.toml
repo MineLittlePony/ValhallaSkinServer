@@ -29,6 +29,11 @@
 # database_url = "postgresql://user:pass@host:5432/dbname"
 # database_url = "sqlite:///./valhalla.db"
 
+# URL pointing to a redis instance for the rate limiter
+#
+# redis_url = "redis://<host>:<port>/n"
+# redis_url = ""
+
 # The S3 bucket to store uploaded textures in.
 #
 # textures_bucket = ""

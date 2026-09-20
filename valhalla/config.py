@@ -67,6 +67,11 @@ $ openssl rand -base64 24
         description="The url to the database. Supports sqlite and postgresql.",
         examples=["postgresql://user:pass@host:5432/dbname"],
     )
+    redis_url: str | None = Field(
+        default=None,
+        description="URL pointing to a redis instance for the rate limiter",
+        examples=["redis://<host>:<port>/n"],
+    )
 
     # TODO this should be saved in the database
     server_id: str = Field(default_factory=generate_server_id, exclude=True)
