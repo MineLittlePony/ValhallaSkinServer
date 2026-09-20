@@ -49,6 +49,7 @@ app.dependency_overrides[get_db] = override_get_db
 def client(tmpdir: Path) -> Generator[TestClient]:
     settings.online_mode = False
     settings.textures_path = str(tmpdir)
+    settings.textures_url = None
     with TestClient(app) as client:
         yield client
 
