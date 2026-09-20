@@ -12,7 +12,7 @@ ENV UV_NO_DEFAULT_GROUPS=1 \
     UV_LOCKED=1 \
     UV_NO_MANAGED_PYTHON=1
 
-COPY --from=ghcr.io/astral-sh/uv:0.11.31 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.12.17 /uv /uvx /bin/
 
 COPY . /app
 
@@ -27,4 +27,8 @@ ENV PATH=$PATH:/app/.venv/bin
 # default port, heroku can override this
 ENV PORT=8080
 CMD alembic upgrade head && \
-    fastapi run --port $PORT --proxy-headers
+    fastapi run \
+    --port $PORT \
+    --proxy-headers \
+    --forwarded-allow-ips '*' \
+    --workers 4
