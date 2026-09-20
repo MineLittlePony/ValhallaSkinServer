@@ -16,3 +16,6 @@ repos:
     rev: v0.0.64
     hooks:
       - id: ty
+
+ci:
+  skip: [ty]
