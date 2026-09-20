@@ -63,18 +63,16 @@ class CRUD:
             select(models.Texture)
             .options(selectinload(models.Texture.upload))
             .where(
-                models.Texture.id.in_(
-                    select(func.max(models.Texture.id))
-                    .where(
-                        models.Texture.user_id == user.id,
-                        models.Texture.end_time == None  # noqa: E711
-                        if at is None
-                        else models.Texture.end_time < at,
-                    )
-                    .order_by(models.Texture.tex_type)
-                    .group_by(models.Texture.tex_type)
-                )
+                models.Texture.user_id == user.id,
+                models.Texture.end_time.is_(None)
+                if at is None
+                else between(
+                    at,
+                    models.Texture.start_time,
+                    func.coalesce(models.Texture.end_time, current_timestamp()),
+                ),
             )
+            .order_by(models.Texture.tex_type)
         )
         return {item.tex_type: item for item in result.scalars()}
 
@@ -89,7 +87,10 @@ class CRUD:
                 selectinload(models.Texture.upload),
                 selectinload(models.Texture.user),
             )
-            .where(models.Texture.user_id.in_(user_ids))
+            .where(
+                models.Texture.user_id.in_(user_ids),
+                models.Texture.end_time.is_(None),
+            )
             .order_by(models.User.uuid, models.Texture.tex_type)
         )
 
