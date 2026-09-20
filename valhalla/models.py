@@ -22,8 +22,8 @@ class Base(MappedAsDataclass, DeclarativeBase):
 class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
-    uuid: Mapped[UUID] = mapped_column(unique=True)
-    name: Mapped[str | None] = mapped_column()
+    uuid: Mapped[UUID] = mapped_column(unique=True, index=True)
+    name: Mapped[str | None] = mapped_column(index=True)
 
     textures: Mapped[list[Texture]] = relationship(
         back_populates="user", init=False, lazy="selectin", repr=False
@@ -52,7 +52,7 @@ class Texture(Base):
     __tablename__ = "textures"
 
     id: Mapped[int] = mapped_column(init=False, primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     upload_id: Mapped[int] = mapped_column(ForeignKey("uploads.id"))
     tex_type: Mapped[str] = mapped_column()
     meta: Mapped[Any] = mapped_column(JSON, default_factory=dict)
