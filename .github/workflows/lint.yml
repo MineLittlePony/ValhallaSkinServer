@@ -2,14 +2,14 @@ name: lint
 
 on: [push]
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    env:
-      UV_LOCKED: 1
-      UV_NO_DEFAULT_GROUPS: 1
-      UV_NO_SYNC: 1
+env:
+  UV_LOCKED: 1
+  UV_NO_DEFAULT_GROUPS: 1
+  UV_NO_SYNC: 1
 
+jobs:
+  lint:
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v7
 
@@ -31,9 +31,43 @@ jobs:
     - name: Format with ruff
       run: uv run ruff format --check
 
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v8.2.0
+      with:
+        version: "0.11.31"
+
+    - name: Setup Python
+      run: uv python install
+
+    - name: Install dependencies
+      run: |
+        uv sync --group test
+
     - name: Testing code with pytest
       run: |
         uv run pytest --cov --cov-report=term --cov-report=xml
+
+  types:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v8.2.0
+      with:
+        version: "0.11.31"
+
+    - name: Setup Python
+      run: uv python install
+
+    - name: Install dependencies
+      run: |
+        uv sync --group test --group lint
 
     - name: Type Check with ty
       run: |
