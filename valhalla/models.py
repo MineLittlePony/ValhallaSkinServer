@@ -39,7 +39,8 @@ class Upload(Base):
     hash: Mapped[str] = mapped_column(unique=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     upload_time: Mapped[datetime] = mapped_column(
-        insert_default=func.current_timestamp(), default=None
+        insert_default=func.current_timestamp(),
+        init=False,
     )
 
     user: Mapped[User] = relationship(back_populates="uploads", init=False, repr=False)
@@ -59,9 +60,12 @@ class Texture(Base):
 
     start_time: Mapped[datetime] = mapped_column(
         insert_default=func.current_timestamp(),
-        default=None,
+        init=False,
     )
-    end_time: Mapped[datetime | None] = mapped_column(default=None)
+    end_time: Mapped[datetime | None] = mapped_column(
+        insert_default=None,
+        init=False,
+    )
 
     user: Mapped[User] = relationship(
         back_populates="textures", init=False, lazy="selectin", repr=False

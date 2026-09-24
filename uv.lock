@@ -1470,7 +1470,7 @@ requires-dist = [
     { name = "python-multipart", specifier = ">=0.0.31" },
     { name = "redis", specifier = ">=8.1.0" },
     { name = "slowapi", specifier = ">=0.1.9" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.37" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1,<2.2" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34.0" },
 ]
 
