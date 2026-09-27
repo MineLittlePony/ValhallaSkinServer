@@ -7,11 +7,13 @@ test_skin = assets / "good" / "64x64.png"
 
 def test_unknown_bulk_user(client: TestClient, user: TestUser) -> None:
     uuid = UUID(bytes=b"\0" * 16)
+    uuid2 = UUID(bytes=b"\0" * 15 + b"1")
     resp = client.post(
         "/api/v1/bulk_textures",
         json={
             "uuids": [
                 str(uuid),
+                str(uuid2),
             ],
         },
     )
