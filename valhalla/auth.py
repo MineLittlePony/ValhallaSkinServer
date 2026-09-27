@@ -10,16 +10,14 @@ from starlette import status
 
 from . import models
 from .config import settings
-from .crud import CRUD
 
 auth_scheme = OAuth2(auto_error=False)
 
 
-async def current_user(
-    crud: Annotated[CRUD, Depends()],
+async def current_user_id(
     header: Annotated[str | None, Depends(auth_scheme)],
     cookie: Annotated[str | None, Cookie(alias="token")] = None,
-) -> models.User | None:
+) -> int | None:
     if header and header.startswith("Bearer "):
         header = header[7:]
     token = header or cookie
@@ -27,17 +25,17 @@ async def current_user(
         return None
 
     try:
-        return await user_from_token(token, crud)
+        return await user_from_token(token)
     except JoseError:
         return None
 
 
-def require_user(
-    user: Annotated[models.User | None, Depends(current_user)],
-) -> models.User:
-    if user is None:
+def require_user_id(
+    user_id: Annotated[int | None, Depends(current_user_id)],
+) -> int:
+    if user_id is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED)
-    return user
+    return user_id
 
 
 jose_key = jwk.import_key(
@@ -55,7 +53,6 @@ def token_from_user(user: models.User, *, expire_in: timedelta) -> str:
     return jwt.encode(header, claims, key=jose_key)
 
 
-async def user_from_token(token: str, crud: CRUD) -> models.User | None:
+async def user_from_token(token: str) -> int | None:
     claims = jwt.decode(token, key=jose_key, algorithms=["HS256"]).claims
-    sid = claims["sid"]
-    return await crud.get_user(sid)
+    return claims["sid"]

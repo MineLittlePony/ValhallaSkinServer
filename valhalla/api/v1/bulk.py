@@ -1,5 +1,3 @@
-from typing import Annotated
-
 from fastapi import APIRouter, Depends, Request
 
 from ...crud import CRUD
@@ -23,16 +21,16 @@ router = APIRouter(tags=["User information"])
 async def bulk_request_textures(
     request: Request,
     body: BulkRequest,
-    crud: Annotated[CRUD, Depends()],
     textures_url: str = Depends(get_textures_url),
 ) -> BulkResponse:
     """Bulk request several user textures.
 
     If a requested user does not have any textures, it is ignored.
     """
-    users = await crud.get_users_by_uuid_bulk(body.uuids)
-    by_uuid = {u.uuid: u for u in users}
-    user_data = await crud.get_user_textures_bulk(users)
+    async with CRUD.create() as crud:
+        users = await crud.get_users_by_uuid_bulk(body.uuids)
+        by_uuid = {u.uuid: u for u in users}
+        user_data = await crud.get_user_textures_bulk(users)
     return BulkResponse(
         users=[
             UserTextures.from_sql(by_uuid[user], textures, textures_url)

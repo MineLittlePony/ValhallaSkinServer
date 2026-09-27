@@ -5,11 +5,9 @@ from uuid import UUID
 
 import pytest
 from pytest_httpx import HTTPXMock
-from sqlalchemy import func, select
 
-from .. import models
 from ..config import settings
-from .conftest import TestClient, TestingSessionLocal, TestUser, assets
+from .conftest import TestClient, TestUser, assets
 
 textures_url = "http://testserver/textures/"
 steve_file = assets / "good/64x64.png"
@@ -192,10 +190,8 @@ async def test_multiple_users_with_same_name(
     id2 = TestUser("UserName").login(client)
     client.post("/api/v1/textures", headers=id2.auth_header)
 
-    async with TestingSessionLocal() as con:
-        result = await con.scalars(
-            select(models.User).where(func.lower(models.User.name) == "username")
-        )
-        user = result.one()
-        assert user.uuid == id2.uuid
-        assert user.name == id2.name
+    resp1 = client.get("/api/v1/user/lookup/name/username").json()
+    resp2 = client.get("/api/v1/user/lookup/name/UserName").json()
+    for resp in resp1, resp2:
+        assert resp["profileId"] == str(id2.uuid)
+        assert resp["profileName"] == id2.name

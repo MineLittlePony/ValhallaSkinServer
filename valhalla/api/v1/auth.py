@@ -53,7 +53,6 @@ async def minecraft_login(
 @router.post("/auth/minecraft/callback")
 async def minecraft_login_callback(
     response: Response,
-    crud: Annotated[CRUD, Depends()],
     client: Annotated[str, Depends(get_client_ip)],
     name: Annotated[str, Form()],
     verify_token: Annotated[int, Form(alias="verifyToken")],
@@ -81,19 +80,17 @@ async def minecraft_login_callback(
         hash = hashlib.md5(offline_name, usedforsecurity=False).digest()
         uid = uuid.UUID(bytes=hash)
 
-    user = await crud.get_or_create_user(uid, name)
-    token = auth.token_from_user(user, expire_in=timedelta(hours=1))
-    auth_header = f"Bearer {token}"
+    async with CRUD.create() as crud:
+        user = await crud.get_or_create_user(uid, name)
+        token = auth.token_from_user(user, expire_in=timedelta(hours=1))
+        auth_header = f"Bearer {token}"
 
-    response.headers["Authorization"] = token
+        response.headers["Authorization"] = token
 
-    try:
         return LoginResponse(
             access_token=auth_header,
             user_id=user.uuid,
         )
-    finally:
-        await crud.db.commit()
 
 
 xboxlive: StarletteOAuth2App = OAuth().register(
@@ -113,9 +110,7 @@ async def xbox_login(request: Request) -> RedirectResponse:
 
 
 @router.api_route("/auth/xbox/callback")
-async def xbox_login_callback(
-    request: Request, crud: Annotated[CRUD, Depends()]
-) -> RedirectResponse:
+async def xbox_login_callback(request: Request) -> RedirectResponse:
     if not request.client:
         raise HTTPException(400)
     try:
@@ -124,18 +119,19 @@ async def xbox_login_callback(
     except (OAuthError, xbox.XboxLoginError) as e:
         raise HTTPException(403, str(e)) from None
     else:
-        user = await crud.get_or_create_user(profile.id, profile.name)
-        expires = timedelta(days=365)
-        token = auth.token_from_user(user, expire_in=expires)
+        async with CRUD.create() as crud:
+            user = await crud.get_or_create_user(profile.id, profile.name)
+            expires = timedelta(days=365)
+            token = auth.token_from_user(user, expire_in=expires)
 
-        response = RedirectResponse("/docs")
-        response.set_cookie(
-            "token",
-            token,
-            secure=True,
-            httponly=True,
-            expires=int(expires.total_seconds()),
-        )
+            response = RedirectResponse("/docs")
+            response.set_cookie(
+                "token",
+                token,
+                secure=True,
+                httponly=True,
+                expires=int(expires.total_seconds()),
+            )
 
-        await crud.db.commit()
-        return response
+            await crud.db.commit()
+            return response

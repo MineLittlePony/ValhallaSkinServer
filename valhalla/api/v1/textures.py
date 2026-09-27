@@ -8,11 +8,10 @@ from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Uploa
 from pydantic import BaseModel, Json
 from starlette import status
 
-from valhalla.config import settings
-
 from ... import image, models, schemas
-from ...auth import require_user
+from ...auth import require_user_id
 from ...byteconv import mb
+from ...config import settings
 from ...crud import CRUD
 from ...files import Files
 from .user import get_user_textures
@@ -25,12 +24,13 @@ max_upload_size = 5 * mb
 
 @router.get("/textures")
 async def get_texture(
-    user: Annotated[models.User, Depends(require_user)],
-    crud: Annotated[CRUD, Depends()],
+    user_id: Annotated[int, Depends(require_user_id)],
     textures_url: Annotated[str, Depends(get_textures_url)],
 ) -> dict[str, schemas.Texture]:
-    user_texts = await get_user_textures(user, None, crud, textures_url)
-    return user_texts.textures
+    async with CRUD.create() as crud:
+        user = await crud.require_user(user_id)
+        user_texts = await get_user_textures(user, None, crud, textures_url)
+        return user_texts.textures
 
 
 async def download_file(url: str, max_size: int) -> bytes:
@@ -86,9 +86,19 @@ async def iter_upload_file(file: UploadFile) -> AsyncGenerator[bytes, Any]:
 
 @router.post("/textures")
 async def post_texture(
-    crud: Annotated[CRUD, Depends()],
     files: Annotated[Files, Depends()],
-    user: Annotated[models.User, Depends(require_user)],
+    user_id: Annotated[int, Depends(require_user_id)],
+    body: schemas.TexturePost,
+) -> None:
+    async with CRUD.create() as crud:
+        user = await crud.require_user(user_id)
+        await post_texture_internal(files, user, crud, body)
+
+
+async def post_texture_internal(
+    files: Files,
+    user: models.User,
+    crud: CRUD,
     body: schemas.TexturePost,
 ) -> None:
     file = await download_file(str(body.file), max_upload_size)
@@ -98,14 +108,28 @@ async def post_texture(
 
 @router.put("/textures")
 async def put_texture(
-    crud: Annotated[CRUD, Depends()],
     files: Annotated[Files, Depends()],
-    user: Annotated[models.User, Depends(require_user)],
+    user_id: Annotated[int, Depends(require_user_id)],
     file: Annotated[UploadFile, File()],
     file_size: Annotated[int, Depends(valid_content_length)],
     type: Annotated[schemas.TextureType, Form()] = "skin",
     meta: Annotated[Json[dict[str, str]] | None, Form()] = None,
 ) -> None:
+    async with CRUD.create() as crud:
+        user = await crud.require_user(user_id)
+        await put_texture_internal(files, user, crud, file, file_size, type, meta)
+
+
+async def put_texture_internal(
+    files: Files,
+    user: models.User,
+    crud: CRUD,
+    file: UploadFile,
+    file_size: int,
+    type: schemas.TextureType,
+    meta: dict[str, str] | None,
+) -> None:
+
     body = await read_upload(iter_upload_file(file), file_size)
     await upload_file(user, type, body, meta, crud, files)
     await crud.db.commit()
@@ -134,10 +158,15 @@ async def upload_file(
 
 @router.delete("/textures")
 async def delete_texture(
-    user: Annotated[models.User, Depends(require_user)],
-    crud: Annotated[CRUD, Depends()],
+    user_id: Annotated[int, Depends(require_user_id)],
     type: schemas.TextureType,
 ) -> None:
+    async with CRUD.create() as crud:
+        user = await crud.require_user(user_id)
+        await delete_texture_internal(user, crud, type)
+
+
+async def delete_texture_internal(user: models.User, crud: CRUD, type: str) -> None:
     await crud.put_texture(user, type, None)
     await crud.db.commit()
 
@@ -150,7 +179,6 @@ class DeleteTexture(BaseModel):
 @router.delete("/texture", deprecated=True)
 async def delete_texture_deprecated(
     texture: DeleteTexture,
-    user: Annotated[models.User, Depends(require_user)],
-    crud: Annotated[CRUD, Depends()],
+    user_id: Annotated[int, Depends(require_user_id)],
 ) -> None:
-    await delete_texture(user, crud, texture.type)
+    await delete_texture(user_id, texture.type)

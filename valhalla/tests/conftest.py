@@ -1,57 +1,48 @@
 import hashlib
-from collections.abc import AsyncGenerator, Generator
-from contextlib import asynccontextmanager
+import tempfile
+from collections.abc import Generator
 from pathlib import Path
-from typing import Any, Literal, Self
+from typing import Literal, Self
 from uuid import UUID
 
 import pytest
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pytest_httpx import HTTPXMock
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from .. import database
 from ..app import app
 from ..config import settings
-from ..db import get_db
 from ..models import Base
 
 assets = Path(__file__).parent / "assets"
 
-
-SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-
-engine = create_async_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+tempdir = tempfile.gettempdir()
+engine = create_engine(
+    f"sqlite+pysqlite:////{tempdir}/test.db", connect_args={"check_same_thread": False}
 )
-TestingSessionLocal = async_sessionmaker[AsyncSession](engine)
-
-
-@asynccontextmanager
-async def app_lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield
-
-
-app.router.lifespan_context = app_lifespan
-
-
-async def override_get_db() -> AsyncGenerator[AsyncSession, Any]:
-    async with TestingSessionLocal() as session:
-        yield session
-
-
-app.dependency_overrides[get_db] = override_get_db
+async_engine = create_async_engine(
+    f"sqlite+aiosqlite:////{tempdir}/test.db", connect_args={"check_same_thread": False}
+)
+TestingSessionLocal = async_sessionmaker(async_engine)
 
 
 @pytest.fixture
-def client(tmpdir: Path) -> Generator[TestClient]:
+def client(tmpdir: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient]:
+    monkeypatch.setattr(database, "SessionLocal", TestingSessionLocal)
     settings.online_mode = False
     settings.textures_path = str(tmpdir)
     settings.textures_url = None
+
     with TestClient(app) as client:
+        with engine.begin() as conn:
+            Base.metadata.create_all(conn)
+
         yield client
+
+        with engine.begin() as conn:
+            Base.metadata.drop_all(conn)
 
 
 @pytest.fixture(autouse=True)

@@ -1,31 +1,50 @@
 from collections import defaultdict
-from collections.abc import AsyncIterator, Iterable, Mapping, Sequence
+from collections.abc import AsyncGenerator, AsyncIterator, Iterable, Mapping, Sequence
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Self
 from uuid import UUID
 
-from fastapi import Depends
+from fastapi import HTTPException, status
 from sqlalchemy import between, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.functions import current_timestamp
 
 from . import models
-from .db import get_db
+from .database import SessionLocal
 
 
 @dataclass
 class CRUD:
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: AsyncSession
+
+    def __init__(self, session: AsyncSession) -> None:
+        self.db = session
+
+    @classmethod
+    @asynccontextmanager
+    async def create(cls) -> AsyncGenerator[Self]:
+        async with SessionLocal() as session:
+            yield cls(session)
 
     async def get_user(self, user_id: int) -> models.User | None:
+        """Get a user by its internal id."""
         result = await self.db.execute(
             select(models.User).where(models.User.id == user_id).limit(1)
         )
         return result.scalar()
 
+    async def require_user(self, user_id: int) -> models.User:
+        user = await self.get_user(user_id)
+        if user is not None:
+            return user
+
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+
     async def get_user_by_name(self, name: str) -> models.User | None:
+        """Get a user by its name."""
         result = await self.db.execute(
             select(models.User)
             .where(func.lower(models.User.name) == name.lower())
@@ -34,6 +53,7 @@ class CRUD:
         return result.scalar()
 
     async def get_user_by_uuid(self, uuid: UUID) -> models.User | None:
+        """Get a user by its uuid."""
         result = await self.db.execute(
             select(models.User).where(models.User.uuid == uuid).limit(1)
         )

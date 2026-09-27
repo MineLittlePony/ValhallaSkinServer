@@ -13,20 +13,6 @@ from .utils import get_textures_url
 router = APIRouter(tags=["User information"])
 
 
-async def resolve_user_id(
-    crud: Annotated[CRUD, Depends()],
-    user_id: Annotated[UUID, Path()],
-) -> models.User | None:
-    return await crud.get_user_by_uuid(user_id)
-
-
-async def resolve_user_name(
-    crud: Annotated[CRUD, Depends()],
-    name: Annotated[str, Path()],
-) -> models.User | None:
-    return await crud.get_user_by_name(name)
-
-
 @router.get("/user/{user_id}")
 @limiter.shared_limit(
     "60/minute",
@@ -39,9 +25,8 @@ async def resolve_user_name(
 )
 async def get_user_textures_by_uuid(
     request: Request,
+    user_id: Annotated[UUID, Path()],
     textures_url: Annotated[str, Depends(get_textures_url)],
-    crud: Annotated[CRUD, Depends()],
-    user: Annotated[models.User | None, Depends(resolve_user_id)],
     at: datetime | None = None,
 ) -> schemas.UserTextures:
     """Get the currently logged in user information.
@@ -51,9 +36,13 @@ async def get_user_textures_by_uuid(
 
     [bt]: #/User%20information/bulk_request_textures_api_v1_bulk_textures_post
     """
-    if user is None:
-        raise HTTPException(404)
-    return await get_user_textures(user, at, crud, textures_url)
+    async with CRUD.create() as crud:
+        user = await crud.get_user_by_uuid(user_id)
+
+        if user is None:
+            raise HTTPException(404)
+
+        return await get_user_textures(user, at, crud, textures_url)
 
 
 @router.get("/user/lookup/name/{name}")
@@ -67,15 +56,18 @@ async def get_user_textures_by_uuid(
 )
 async def get_user_textures_by_name(
     request: Request,
+    name: str,
     textures_url: Annotated[str, Depends(get_textures_url)],
-    crud: Annotated[CRUD, Depends()],
-    user: Annotated[models.User | None, Depends(resolve_user_name)],
     at: datetime | None = None,
 ) -> schemas.UserTextures:
     """Lookup the texture of a user as of their last login."""
-    if user is None:
-        raise HTTPException(404)
-    return await get_user_textures(user, at, crud, textures_url)
+    async with CRUD.create() as crud:
+        user = await crud.get_user_by_name(name)
+
+        if user is None:
+            raise HTTPException(404)
+
+        return await get_user_textures(user, at, crud, textures_url)
 
 
 async def get_user_textures(
