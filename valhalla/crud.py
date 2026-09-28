@@ -78,6 +78,7 @@ class CRUD:
         user: models.User,
         *,
         at: datetime | None = None,
+        types: Iterable[str] | None = None,
     ) -> dict[str, models.Texture]:
         result = await self.db.execute(
             select(models.Texture)
@@ -91,13 +92,17 @@ class CRUD:
                     models.Texture.start_time,
                     func.coalesce(models.Texture.end_time, current_timestamp()),
                 ),
+                *(models.Texture.tex_type.in_(types),) if types else (),
             )
             .order_by(models.Texture.tex_type)
         )
         return {item.tex_type: item for item in result.scalars()}
 
     async def get_user_textures_bulk(
-        self, users: Iterable[models.User]
+        self,
+        users: Iterable[models.User],
+        *,
+        types: Iterable[str] | None = None,
     ) -> Mapping[UUID, Mapping[str, models.Texture]]:
         user_ids = [u.id for u in users]
         result = await self.db.scalars(
@@ -110,6 +115,7 @@ class CRUD:
             .where(
                 models.Texture.user_id.in_(user_ids),
                 models.Texture.end_time.is_(None),
+                *(models.Texture.tex_type.in_(types),) if types else (),
             )
             .order_by(models.User.uuid, models.Texture.tex_type)
         )
