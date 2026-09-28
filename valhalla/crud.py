@@ -31,10 +31,7 @@ class CRUD:
 
     async def get_user(self, user_id: int) -> models.User | None:
         """Get a user by its internal id."""
-        result = await self.db.execute(
-            select(models.User).where(models.User.id == user_id).limit(1)
-        )
-        return result.scalar()
+        return await self.db.get(models.User, user_id)
 
     async def require_user(self, user_id: int) -> models.User:
         user = await self.get_user(user_id)
