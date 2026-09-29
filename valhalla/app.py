@@ -1,12 +1,13 @@
 import logging
 import os
-from collections.abc import AsyncGenerator, Awaitable, Callable
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
 import boto3
-from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
@@ -62,18 +63,8 @@ async def index() -> RedirectResponse:
     raise HTTPException(status.HTTP_404_NOT_FOUND)
 
 
-@app.middleware("http")
-async def redirect_http_to_https(
-    request: Request, call_next: Callable[[Request], Awaitable[Response]]
-) -> Response:
-    # redirect to https if using a standard http port. If non-standard, assume dev env
-    scheme = request.headers.get("X-Forwarded-Proto", request.url.scheme)
-    port = int(request.headers.get("X-Forwarded-Port", request.url.port or 0))
-    if port in (80, 443) and scheme == "http":
-        url = request.url.replace(scheme="https")
-        return RedirectResponse(url, status.HTTP_308_PERMANENT_REDIRECT)
-    return await call_next(request)
-
+if "HEROKU" in os.environ:
+    app.add_middleware(HTTPSRedirectMiddleware)
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"])
 app.add_middleware(SessionMiddleware, secret_key=settings.secret_key)
