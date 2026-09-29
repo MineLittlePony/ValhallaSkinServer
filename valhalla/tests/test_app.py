@@ -6,8 +6,7 @@ from uuid import UUID
 import pytest
 from pytest_httpx import HTTPXMock
 
-from ..config import settings
-from .conftest import TestClient, TestUser, assets
+from .conftest import TestClient, TestUser, assets, settings
 
 textures_url = "http://testserver/textures/"
 steve_file = assets / "good/64x64.png"

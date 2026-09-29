@@ -1,7 +1,8 @@
 import secrets
-from typing import Literal
+from typing import Annotated, Literal
 from urllib.parse import urlparse
 
+from fastapi import Depends, Request
 from pydantic import AnyHttpUrl, Field
 from pydantic_settings import (
     BaseSettings,
@@ -155,8 +156,8 @@ If empty, will assume same origin.
         )
 
 
-def get_settings() -> Settings:
-    return Settings()
+def get_config(request: Request) -> Settings:
+    return request.app.state["config"]
 
 
-settings = Settings()
+type Config = Annotated[Settings, Depends(get_config)]

@@ -1,20 +1,39 @@
 import hashlib
 import secrets
 import uuid
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from datetime import timedelta
 from typing import Annotated
 
 from authlib.integrations.starlette_client import OAuth, OAuthError, StarletteOAuth2App
 from expiringdict import ExpiringDict
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, FastAPI, Form, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 
 from ... import auth, mojang, xbox
-from ...config import settings
+from ...config import Config
 from ...crud import CRUD
 from ...schemas import LoginMinecraftHandshakeResponse, LoginResponse
 
-router = APIRouter(tags=["Authentication"])
+xboxlive: StarletteOAuth2App
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+    global xboxlive
+    config: Config = app.state["config"]
+    xboxlive = OAuth().register(
+        "xboxlive",
+        client_id=config.xbox_live_client_id,
+        client_secret=config.xbox_live_client_secret,
+        server_metadata_url=config.xbox_live_server_metadata_url,
+        client_kwargs=config.xbox_live_client_kwargs,
+    )
+    yield
+
+
+router = APIRouter(tags=["Authentication"], lifespan=lifespan)
 
 
 # Validate tokens are kept 100 at a time for 30 seconds each
@@ -36,6 +55,7 @@ def get_client_ip(request: Request) -> str:
 
 @router.post("/auth/minecraft")
 async def minecraft_login(
+    settings: Config,
     client: Annotated[str, Depends(get_client_ip)],
     name: Annotated[str, Form()],
 ) -> LoginMinecraftHandshakeResponse:
@@ -53,6 +73,7 @@ async def minecraft_login(
 @router.post("/auth/minecraft/callback")
 async def minecraft_login_callback(
     response: Response,
+    settings: Config,
     client: Annotated[str, Depends(get_client_ip)],
     name: Annotated[str, Form()],
     verify_token: Annotated[int, Form(alias="verifyToken")],
@@ -91,15 +112,6 @@ async def minecraft_login_callback(
             access_token=auth_header,
             user_id=user.uuid,
         )
-
-
-xboxlive: StarletteOAuth2App = OAuth().register(
-    "xboxlive",
-    client_id=settings.xbox_live_client_id,
-    client_secret=settings.xbox_live_client_secret,
-    server_metadata_url=settings.xbox_live_server_metadata_url,
-    client_kwargs=settings.xbox_live_client_kwargs,
-)
 
 
 @router.api_route("/auth/xbox")

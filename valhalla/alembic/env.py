@@ -3,7 +3,9 @@ from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy.engine import Connection
+from sqlalchemy.ext.asyncio import create_async_engine
 
+from valhalla.config import Settings
 from valhalla.models import Base
 
 # this is the Alembic Config object, which provides
@@ -39,10 +41,10 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    from valhalla.config import settings
 
+    config = Settings(_env_file=None)
     context.configure(
-        url=settings.get_database_url(),
+        url=config.get_database_url(),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -66,7 +68,8 @@ async def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    from valhalla.database import engine as connectable
+    config = Settings(_env_file=None)
+    connectable = create_async_engine(config.get_database_url())
 
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)

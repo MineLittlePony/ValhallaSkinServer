@@ -11,7 +11,7 @@ from starlette import status
 from ... import image, models, schemas
 from ...auth import require_user_id
 from ...byteconv import mb
-from ...config import settings
+from ...config import Config
 from ...crud import CRUD
 from ...files import Files
 from .user import get_user_textures
@@ -86,28 +86,31 @@ async def iter_upload_file(file: UploadFile) -> AsyncGenerator[bytes, Any]:
 
 @router.post("/textures")
 async def post_texture(
+    config: Config,
     files: Annotated[Files, Depends()],
     user_id: Annotated[int, Depends(require_user_id)],
     body: schemas.TexturePost,
 ) -> None:
     async with CRUD.create() as crud:
         user = await crud.require_user(user_id)
-        await post_texture_internal(files, user, crud, body)
+        await post_texture_internal(config, files, user, crud, body)
 
 
 async def post_texture_internal(
+    config: Config,
     files: Files,
     user: models.User,
     crud: CRUD,
     body: schemas.TexturePost,
 ) -> None:
     file = await download_file(str(body.file), max_upload_size)
-    await upload_file(user, body.type, file, body.meta, crud, files)
+    await upload_file(config, user, body.type, file, body.meta, crud, files)
     await crud.db.commit()
 
 
 @router.put("/textures")
 async def put_texture(
+    config: Config,
     files: Annotated[Files, Depends()],
     user_id: Annotated[int, Depends(require_user_id)],
     file: Annotated[UploadFile, File()],
@@ -117,10 +120,13 @@ async def put_texture(
 ) -> None:
     async with CRUD.create() as crud:
         user = await crud.require_user(user_id)
-        await put_texture_internal(files, user, crud, file, file_size, type, meta)
+        await put_texture_internal(
+            config, files, user, crud, file, file_size, type, meta
+        )
 
 
 async def put_texture_internal(
+    config: Config,
     files: Files,
     user: models.User,
     crud: CRUD,
@@ -131,11 +137,12 @@ async def put_texture_internal(
 ) -> None:
 
     body = await read_upload(iter_upload_file(file), file_size)
-    await upload_file(user, type, body, meta, crud, files)
+    await upload_file(config, user, type, body, meta, crud, files)
     await crud.db.commit()
 
 
 async def upload_file(
+    settings: Config,
     user: models.User,
     texture_type: str,
     file: bytes,

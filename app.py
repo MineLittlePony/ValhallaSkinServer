@@ -1,3 +1,5 @@
-from valhalla.app import app
+from valhalla.app import create_app
 
 __all__ = ("app",)
+
+app = create_app()

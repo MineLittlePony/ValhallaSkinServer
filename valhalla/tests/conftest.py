@@ -1,4 +1,6 @@
 import hashlib
+import os.path
+import shutil
 import tempfile
 from collections.abc import Generator
 from pathlib import Path
@@ -7,33 +9,51 @@ from uuid import UUID
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic_settings import SettingsConfigDict
 from pytest_httpx import HTTPXMock
 from sqlalchemy import create_engine
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import create_async_engine
 
-from .. import database
-from ..app import app
-from ..config import settings
+from ..app import create_app
+from ..config import Settings
 from ..models import Base
 
 assets = Path(__file__).parent / "assets"
 
-tempdir = tempfile.gettempdir()
+tempdir = tempfile.mkdtemp(prefix="pytest-valhalla-")
 engine = create_engine(
     f"sqlite+pysqlite:////{tempdir}/test.db", connect_args={"check_same_thread": False}
 )
 async_engine = create_async_engine(
     f"sqlite+aiosqlite:////{tempdir}/test.db", connect_args={"check_same_thread": False}
 )
-TestingSessionLocal = async_sessionmaker(async_engine)
+
+
+@pytest.fixture(autouse=True, scope="session")
+def cleanup() -> Generator[None]:
+    yield
+    shutil.rmtree(tempdir)
+
+
+class TestConfig(Settings):
+    model_config = SettingsConfigDict(
+        env_file=None,
+        toml_file=None,
+    )
+
+
+settings = TestConfig(
+    database_url=str(async_engine.url),
+    online_mode=False,
+    textures_path=os.path.join(tempdir, "textures"),
+    textures_url=None,
+    server_id="testing",
+)
 
 
 @pytest.fixture
-def client(tmpdir: Path, monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient]:
-    monkeypatch.setattr(database, "SessionLocal", TestingSessionLocal)
-    settings.online_mode = False
-    settings.textures_path = str(tmpdir)
-    settings.textures_url = None
+def client() -> Generator[TestClient]:
+    app = create_app(settings)
 
     with TestClient(app) as client:
         with engine.begin() as conn:

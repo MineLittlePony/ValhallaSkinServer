@@ -9,7 +9,7 @@ from joserfc.errors import JoseError
 from starlette import status
 
 from . import models
-from .config import settings
+from .config import Settings
 
 auth_scheme = OAuth2(auto_error=False)
 
@@ -38,9 +38,14 @@ def require_user_id(
     return user_id
 
 
-jose_key = jwk.import_key(
-    hashlib.sha256(settings.secret_key.encode()).digest(), key_type="oct"
-)
+jose_key: jwk.OctKey
+
+
+def init_jwk(settings: Settings) -> None:
+    global jose_key
+    jose_key = jwk.import_key(
+        hashlib.sha256(settings.secret_key.encode()).digest(), key_type="oct"
+    )
 
 
 def token_from_user(user: models.User, *, expire_in: timedelta) -> str:

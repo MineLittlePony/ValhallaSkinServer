@@ -4,13 +4,11 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from .config import Settings, get_settings
+from .config import Config
 from .s3path import S3Path
 
 
-def get_target_path(
-    config: Annotated[Settings, Depends(get_settings)],
-) -> Path | S3Path:
+def get_target_path(config: Config) -> Path | S3Path:
     bucket = config.textures_bucket
     if bucket is None:
         # bucket not set, use local files for storage

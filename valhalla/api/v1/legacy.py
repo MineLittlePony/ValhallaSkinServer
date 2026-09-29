@@ -7,6 +7,7 @@ from starlette import status
 
 from ... import models, schemas
 from ...auth import require_user_id
+from ...config import Config
 from ...crud import CRUD
 from ...files import Files
 from . import auth, textures
@@ -39,6 +40,7 @@ async def check_user_id(user: models.User, user_id: UUID) -> None:
 @router.post("/user/{user_id}/{skin_type}", tags=["Texture Uploads"])
 async def post_skin_old(
     request: Request,
+    config: Config,
     file: Annotated[AnyHttpUrl, Form()],
     current_user_id: Annotated[int, Depends(require_user_id)],
     files: Annotated[Files, Depends()],
@@ -55,12 +57,13 @@ async def post_skin_old(
         form = await request.form()
         meta = {k: v for k, v in form.items() if isinstance(v, str)}
         body = schemas.TexturePost(type=skin_type, file=file, meta=meta)
-        await textures.post_texture_internal(files, user, crud, body)
+        await textures.post_texture_internal(config, files, user, crud, body)
 
 
 @router.put("/user/{user_id}/{skin_type}", tags=["Texture Uploads"])
 async def put_skin_old(
     request: Request,
+    config: Config,
     current_user_id: Annotated[int, Depends(require_user_id)],
     files: Annotated[Files, Depends()],
     file: Annotated[UploadFile, File()],
@@ -78,7 +81,7 @@ async def put_skin_old(
         form = await request.form()
         meta = {k: v for k, v in form.items() if isinstance(v, str)}
         await textures.put_texture_internal(
-            files, user, crud, file, file_size, skin_type, meta
+            config, files, user, crud, file, file_size, skin_type, meta
         )
 
 
