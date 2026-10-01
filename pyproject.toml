@@ -17,8 +17,8 @@ dependencies = [
     "authlib>=1.4.0",
     "boto3>=1.36.6",
     "expiringdict>=1.2.2",
-    "fastapi>=0.115.7",
-    "fastapi-cli>=0.0.7",
+    "fastapi>=0.142.1",
+    "fastapi-cli>=0.0.32",
     "uvicorn[standard]>=0.34.0",
     "itsdangerous>=2.2.0",
     "pillow>=11.1.0",
@@ -94,3 +94,6 @@ select = [
     "YTT", "FBT", "ASYNC", "C4", "DTZ",
     "PIE", "RET", "SLF", "FLY", "PERF", "RUF"
 ]
+
+[tool.fastapi]
+entrypoint = "app:app"

@@ -1,3 +1,6 @@
+# Configuration for the skin server.
+#
+# Items can be set via config.toml or dotenv.
 
 # Disable this setting to remove the requirement for users to sign into Minecraft before
 # uploading their skins.
@@ -13,6 +16,7 @@
 # List of textures which will be denied upload.
 #
 # Valid values: ["skin", "cape", "elytra"]
+#
 # texture_type_denylist = ["cape"]
 
 # The secret key used to sign the session data.
@@ -51,6 +55,7 @@
 # If empty, will assume same origin.
 #
 # textures_url = "https://foobar.s3.amazonaws.com"
+# textures_url = ""
 
 # xbox_live_client_id = ""
 
@@ -65,3 +70,11 @@
 # aws_access_key_id = ""
 
 # aws_secret_access_key = ""
+
+[otel]
+# Configuration table for opentelemetry
+
+# service_name = "my-api"
+# service_name = ""
+# exporter_otlp_endpoint = "https://collector.example.com"
+# exporter_otlp_endpoint = ""

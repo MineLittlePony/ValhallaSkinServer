@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 from urllib.parse import urlparse
 
 from fastapi import Depends, Request
-from pydantic import AnyHttpUrl, Field
+from pydantic import AnyHttpUrl, BaseModel, Field
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -33,7 +33,19 @@ def generate_server_id() -> str:
     return s.replace("-", "")
 
 
+class OtelConfig(BaseModel):
+    service_name: str = Field(examples=["my-api"])
+    exporter_otlp_endpoint: AnyHttpUrl = Field(
+        examples=["https://collector.example.com"]
+    )
+
+
 class Settings(BaseSettings):
+    """Configuration for the skin server.
+
+    Items can be set via config.toml or dotenv.
+    """
+
     online_mode: bool = Field(
         default=True,
         description="""
@@ -121,6 +133,10 @@ If empty, will assume same origin.
     aws_access_key_id: str | None = None
     aws_secret_access_key: str | None = None
     verify_aws_credentials: bool = Field(default=True, exclude=True)
+
+    otel: OtelConfig | None = Field(
+        default=None, description="Configuration table for opentelemetry"
+    )
 
     def get_database_url(self) -> str:
         return resolve_db(self.database_url)
