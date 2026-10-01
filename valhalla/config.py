@@ -34,9 +34,13 @@ def generate_server_id() -> str:
 
 
 class OtelConfig(BaseModel):
-    service_name: str = Field(examples=["my-api"])
-    exporter_otlp_endpoint: AnyHttpUrl = Field(
-        examples=["https://collector.example.com"]
+    service_name: str | None = Field(
+        default=None,
+        examples=["my-api"],
+    )
+    exporter_otlp_endpoint: AnyHttpUrl | None = Field(
+        default=None,
+        examples=["https://collector.example.com"],
     )
 
 
@@ -135,7 +139,8 @@ If empty, will assume same origin.
     verify_aws_credentials: bool = Field(default=True, exclude=True)
 
     otel: OtelConfig | None = Field(
-        default=None, description="Configuration table for opentelemetry"
+        default=None,
+        description="Configuration table for opentelemetry",
     )
 
     def get_database_url(self) -> str:
