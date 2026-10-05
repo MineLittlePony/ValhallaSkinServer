@@ -103,7 +103,7 @@ async def minecraft_login_callback(
 
     async with CRUD.create() as crud:
         user = await crud.get_or_create_user(uid, name)
-        token = auth.token_from_user(user, expire_in=timedelta(hours=1))
+        token = auth.token_from_user(user.id, expire_in=timedelta(hours=1))
         auth_header = f"Bearer {token}"
 
         response.headers["Authorization"] = token
@@ -134,7 +134,7 @@ async def xbox_login_callback(request: Request) -> RedirectResponse:
         async with CRUD.create() as crud:
             user = await crud.get_or_create_user(profile.id, profile.name)
             expires = timedelta(days=365)
-            token = auth.token_from_user(user, expire_in=expires)
+            token = auth.token_from_user(user.id, expire_in=expires)
 
             response = RedirectResponse("/docs")
             response.set_cookie(

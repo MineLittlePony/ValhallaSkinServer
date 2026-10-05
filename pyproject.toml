@@ -41,6 +41,7 @@ repository = "https://github.com/killjoy1221/ValhallaSkinServer"
 
 [dependency-groups]
 test = [
+    "freezegun>=1.5.5",
     "moto[s3,sts]>=5.0.27",
     "pytest>=8.3.4",
     "pytest-cov>=7.0.0",

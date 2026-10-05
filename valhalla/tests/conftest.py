@@ -14,6 +14,7 @@ from pytest_httpx import HTTPXMock
 from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from .. import auth
 from ..app import create_app
 from ..config import Settings
 from ..models import Base
@@ -27,12 +28,6 @@ engine = create_engine(
 async_engine = create_async_engine(
     f"sqlite+aiosqlite:////{tempdir}/test.db", connect_args={"check_same_thread": False}
 )
-
-
-@pytest.fixture(autouse=True, scope="session")
-def cleanup() -> Generator[None]:
-    yield
-    shutil.rmtree(tempdir)
 
 
 class TestConfig(Settings):
@@ -49,6 +44,13 @@ settings = TestConfig(
     textures_url=None,
     server_id="testing",
 )
+
+
+@pytest.fixture(autouse=True, scope="session")
+def setup() -> Generator[None]:
+    auth.init_jwk(settings)
+    yield
+    shutil.rmtree(tempdir)
 
 
 @pytest.fixture
