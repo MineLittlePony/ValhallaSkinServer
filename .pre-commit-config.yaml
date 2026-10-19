@@ -23,6 +23,8 @@ repos:
     rev: v1.8.9
     hooks:
       - id: tombi-lint
+        args: [--offline]
       - id: tombi-format
+        args: [--offline]
 ci:
   skip: [ty]
