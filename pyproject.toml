@@ -14,7 +14,7 @@ license = "AGPL-3.0-only"
 dependencies = [
     "aiosqlite>=0.20.0",
     "alembic>=1.14.1",
-    "authlib>=1.4.0",
+    "authlib>=1.9.1",
     "boto3>=1.36.6",
     "expiringdict>=1.2.2",
     "fastapi>=0.142.1",
@@ -61,6 +61,7 @@ lint = [
 
 [tool.uv]
 default-groups = "all"
+exclude-dependencies = ["httpx"]
 
 [tool.uv.build-backend]
 module-root = "."
