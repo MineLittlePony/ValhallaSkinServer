@@ -4,9 +4,10 @@ from pathlib import Path
 from uuid import UUID
 
 import pytest
+from httpx2 import AsyncClient
 from pytest_httpx import HTTPXMock
 
-from .conftest import TestClient, TestUser, assets, settings
+from .conftest import TestUser, assets, settings
 
 textures_url = "http://testserver/textures/"
 steve_file = assets / "good/64x64.png"
@@ -30,9 +31,9 @@ def build_request_kwargs(file: str | Path) -> tuple[str, dict]:
     [(steve_url, steve_file), steve_file],
 )
 @pytest.mark.httpx_mock(can_send_already_matched_responses=True)
-def test_texture_upload_post(
+async def test_texture_upload_post(
     steve_uri: Path | tuple[str, Path] | str,
-    client: TestClient,
+    client: AsyncClient,
     user: TestUser,
     httpx_mock: HTTPXMock,
 ) -> None:
@@ -40,12 +41,12 @@ def test_texture_upload_post(
         steve_uri, file = steve_uri
         httpx_mock.add_response(url=steve_uri, content=file.read_bytes())
     method, kwargs = build_request_kwargs(steve_uri)
-    upload_resp = client.request(
+    upload_resp = await client.request(
         method, "/api/v1/textures", headers=user.auth_header, **kwargs
     )
     assert upload_resp.status_code == 200, upload_resp.json()
 
-    user_resp = client.get("/api/v1/textures", headers=user.auth_header)
+    user_resp = await client.get("/api/v1/textures", headers=user.auth_header)
     assert user_resp.status_code == 200, user_resp.json()
     textures = user_resp.json()
     skin = textures["skin"]
@@ -53,24 +54,24 @@ def test_texture_upload_post(
     assert skin["url"] == steve_hash
     assert not skin["metadata"]
 
-    anon_resp = client.get(f"/api/v1/user/{user.uuid}")
+    anon_resp = await client.get(f"/api/v1/user/{user.uuid}")
     assert anon_resp.status_code == 200, anon_resp.json()
     assert anon_resp.json()["textures"] == textures
 
-    byname_resp = client.get(f"/api/v1/user/lookup/name/{user.name}")
+    byname_resp = await client.get(f"/api/v1/user/lookup/name/{user.name}")
     assert byname_resp.status_code == 200, byname_resp.json()
     assert byname_resp.json()["textures"] == textures
 
-    byname_resp = client.get(f"/api/v1/user/lookup/name/{user.name.lower()}")
+    byname_resp = await client.get(f"/api/v1/user/lookup/name/{user.name.lower()}")
     assert byname_resp.status_code == 200, byname_resp.json()
     assert byname_resp.json()["textures"] == textures
 
 
-def test_unknown_user_textures(client: TestClient) -> None:
+async def test_unknown_user_textures(client: AsyncClient) -> None:
     user = TestUser("UnknownUserName")
-    resp = client.get(f"/api/v1/user/{user.uuid}")
+    resp = await client.get(f"/api/v1/user/{user.uuid}")
     assert resp.status_code == 404
-    resp = client.get(f"/api/v1/user/lookup/name/{user.name}6")
+    resp = await client.get(f"/api/v1/user/lookup/name/{user.name}6")
     assert resp.status_code == 404
 
 
@@ -79,16 +80,16 @@ def test_unknown_user_textures(client: TestClient) -> None:
     [steve_url, steve_file],
 )
 @pytest.mark.httpx_mock(can_send_already_matched_responses=True)
-def test_unauthenticated_user_texture_upload(
-    steve_uri: str, client: TestClient
+async def test_unauthenticated_user_texture_upload(
+    steve_uri: str, client: AsyncClient
 ) -> None:
     method, kwargs = build_request_kwargs(steve_uri)
-    upload_resp = client.request(method, "/api/v1/textures", **kwargs)
+    upload_resp = await client.request(method, "/api/v1/textures", **kwargs)
     assert upload_resp.status_code == 401, upload_resp.json()
 
 
-def test_non_image_upload(client: TestClient, user: TestUser) -> None:
-    resp = client.put(
+async def test_non_image_upload(client: AsyncClient, user: TestUser) -> None:
+    resp = await client.put(
         "/api/v1/textures",
         headers=user.auth_header,
         data={"type": "skin"},
@@ -98,9 +99,9 @@ def test_non_image_upload(client: TestClient, user: TestUser) -> None:
     assert "cannot identify image file" in resp.json()["detail"]
 
 
-def test_very_large_upload(client: TestClient, user: TestUser) -> None:
+async def test_very_large_upload(client: AsyncClient, user: TestUser) -> None:
     ten_megabytes_of_zeros = b"\0" * 10_000_000
-    resp = client.put(
+    resp = await client.put(
         "/api/v1/textures",
         headers={
             **user.auth_header,
@@ -113,8 +114,8 @@ def test_very_large_upload(client: TestClient, user: TestUser) -> None:
     assert resp.status_code == 413, resp.json()  # Request entity too large
 
 
-def test_bad_namespaced_tex_type(client: TestClient, user: TestUser) -> None:
-    resp = client.put(
+async def test_bad_namespaced_tex_type(client: AsyncClient, user: TestUser) -> None:
+    resp = await client.put(
         "/api/v1/textures",
         headers=user.auth_header,
         files={"file": (steve_file.name, steve_file.read_bytes(), "image/png")},
@@ -123,8 +124,8 @@ def test_bad_namespaced_tex_type(client: TestClient, user: TestUser) -> None:
     assert resp.status_code == 400
 
 
-def test_skin_metadata(client: TestClient, user: TestUser) -> None:
-    resp = client.put(
+async def test_skin_metadata(client: AsyncClient, user: TestUser) -> None:
+    resp = await client.put(
         "/api/v1/textures",
         data={"meta": json.dumps({"model": "slim"})},
         files={"file": (steve_file.name, steve_file.read_bytes(), "image/png")},
@@ -132,13 +133,13 @@ def test_skin_metadata(client: TestClient, user: TestUser) -> None:
     )
     assert resp.status_code == 200
 
-    resp = client.get("/api/v1/textures", headers=user.auth_header)
+    resp = await client.get("/api/v1/textures", headers=user.auth_header)
     assert resp.status_code == 200
     assert resp.json()["skin"]["metadata"] == {"model": "slim"}
 
 
-def test_skin_metadata_url(client: TestClient, user: TestUser) -> None:
-    resp = client.post(
+async def test_skin_metadata_url(client: AsyncClient, user: TestUser) -> None:
+    resp = await client.post(
         "/api/v1/textures",
         json={
             "type": "skin",
@@ -149,15 +150,15 @@ def test_skin_metadata_url(client: TestClient, user: TestUser) -> None:
     )
     assert resp.status_code == 200
 
-    resp = client.get("/api/v1/textures", headers=user.auth_header)
+    resp = await client.get("/api/v1/textures", headers=user.auth_header)
     assert resp.status_code == 200
     assert resp.json()["skin"]["metadata"] == {"model": "slim"}
 
 
-def test_skin_delete(client: TestClient, user: TestUser) -> None:
-    test_skin_metadata(client, user)
+async def test_skin_delete(client: AsyncClient, user: TestUser) -> None:
+    await test_skin_metadata(client, user)
 
-    resp = client.delete(
+    resp = await client.delete(
         "/api/v1/textures", headers=user.auth_header, params={"type": "skin"}
     )
 
@@ -167,7 +168,7 @@ def test_skin_delete(client: TestClient, user: TestUser) -> None:
 async def test_multiple_users_with_same_name(
     httpx_mock: HTTPXMock,
     monkeypatch: pytest.MonkeyPatch,
-    client: TestClient,
+    client: AsyncClient,
 ) -> None:
     uuid = UUID("526d5b75-3b09-47fb-8f91-1efc8d2523a4")
 
@@ -183,14 +184,14 @@ async def test_multiple_users_with_same_name(
         json={"id": str(uuid), "name": "UserName"},
     )
 
-    id1 = TestUser("username").login(client)
-    client.post("/api/v1/textures", headers=id1.auth_header)
+    id1 = await TestUser("username").login(client)
+    await client.post("/api/v1/textures", headers=id1.auth_header)
 
-    id2 = TestUser("UserName").login(client)
-    client.post("/api/v1/textures", headers=id2.auth_header)
+    id2 = await TestUser("UserName").login(client)
+    await client.post("/api/v1/textures", headers=id2.auth_header)
 
-    resp1 = client.get("/api/v1/user/lookup/name/username").json()
-    resp2 = client.get("/api/v1/user/lookup/name/UserName").json()
+    resp1 = (await client.get("/api/v1/user/lookup/name/username")).json()
+    resp2 = (await client.get("/api/v1/user/lookup/name/UserName")).json()
     for resp in resp1, resp2:
         assert resp["profileId"] == str(id2.uuid)
         assert resp["profileName"] == id2.name

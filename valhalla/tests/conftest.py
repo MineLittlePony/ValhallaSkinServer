@@ -2,16 +2,17 @@ import hashlib
 import os.path
 import shutil
 import tempfile
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
 from typing import Literal, Self
 from uuid import UUID
 
+import anyio
 import pytest
-from fastapi.testclient import TestClient
+from asgi_lifespan import LifespanManager
+from httpx2 import ASGITransport, AsyncClient
 from pydantic_settings import SettingsConfigDict
 from pytest_httpx import HTTPXMock
-from sqlalchemy import create_engine
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from .. import auth
@@ -22,9 +23,6 @@ from ..models import Base
 assets = Path(__file__).parent / "assets"
 
 tempdir = tempfile.mkdtemp(prefix="pytest-valhalla-")
-engine = create_engine(
-    f"sqlite+pysqlite:////{tempdir}/test.db", connect_args={"check_same_thread": False}
-)
 async_engine = create_async_engine(
     f"sqlite+aiosqlite:////{tempdir}/test.db", connect_args={"check_same_thread": False}
 )
@@ -54,17 +52,23 @@ def setup() -> Generator[None]:
 
 
 @pytest.fixture
-def client() -> Generator[TestClient]:
+async def client() -> AsyncGenerator[AsyncClient]:
     app = create_app(settings)
 
-    with TestClient(app) as client:
-        with engine.begin() as conn:
-            Base.metadata.create_all(conn)
+    async with (
+        LifespanManager(app),
+        AsyncClient(
+            base_url="http://testserver",
+            transport=ASGITransport(app),
+        ) as client,
+        async_engine.begin() as conn,
+    ):
+        await conn.run_sync(Base.metadata.create_all)
 
-        yield client
-
-        with engine.begin() as conn:
-            Base.metadata.drop_all(conn)
+        try:
+            yield client
+        finally:
+            await conn.run_sync(Base.metadata.drop_all)
 
 
 @pytest.fixture(autouse=True)
@@ -92,16 +96,18 @@ class TestUser:
             return {}
         return {"authorization": self.access_token}
 
-    def login(self, client: TestClient) -> Self:
+    async def login(self, client: AsyncClient) -> Self:
         data = (
-            client.post("/api/v1/auth/minecraft", data={"name": self.name})
+            (await client.post("/api/v1/auth/minecraft", data={"name": self.name}))
             .raise_for_status()
             .json()
         )
         token = (
-            client.post(
-                "/api/v1/auth/minecraft/callback",
-                data={"name": self.name, "verifyToken": data["verifyToken"]},
+            (
+                await client.post(
+                    "/api/v1/auth/minecraft/callback",
+                    data={"name": self.name, "verifyToken": data["verifyToken"]},
+                )
             )
             .raise_for_status()
             .json()
@@ -112,14 +118,18 @@ class TestUser:
 
 
 @pytest.fixture
-def user(client: TestClient) -> TestUser:
-    return TestUser("TestUser").login(client)
+async def user(client: AsyncClient) -> TestUser:
+    return await TestUser("TestUser").login(client)
 
 
 @pytest.fixture
-def users(client: TestClient) -> list[TestUser]:
+async def users(client: AsyncClient) -> list[TestUser]:
     """Fixture to get a list of random users"""
-    return [TestUser(f"TestUser{n}").login(client) for n in range(1, 11)]
+    users = [TestUser(f"TestUser{n}") for n in range(1, 11)]
+    async with anyio.create_task_group() as tg:
+        for u in users:
+            tg.create_task(u.login(client))
+    return users
 
 
 @pytest.fixture(scope="function")
