@@ -1,16 +1,13 @@
-[build-system]
-requires = ["uv_build>=0.12.17,<0.13.0"]
-build-backend = "uv_build"
-
 [project]
 name = "valhalla"
 version = "1.2.1"
 description = "An alternative skin server for Minecraft supporting metadata and hd textures"
+license = "AGPL-3.0-only"
 authors = [
     { name = "Matthew Messinger", email = "mattmess1221@gmail.com" },
 ]
-license = "AGPL-3.0-only"
 
+requires-python = "==3.14.*"
 dependencies = [
     "aiosqlite>=0.20.0",
     "alembic>=1.14.1",
@@ -19,27 +16,34 @@ dependencies = [
     "expiringdict>=1.2.2",
     "fastapi>=0.142.1",
     "fastapi-cli>=0.0.32",
-    "uvicorn[standard]>=0.34.0",
+    "httpx2>=2.9.1",
     "itsdangerous>=2.2.0",
+    "joserfc>=1.6.3",
+    "pathlib-abc>=0.5.2",
     "pillow>=11.1.0",
     "psycopg[binary]>=3.2.4",
     "pydantic>=2.10.6",
     "pydantic-settings>=2.7.1",
     "python-dotenv>=1.0.1",
     "python-multipart>=0.0.31",
+    "redis>=8.1.0",
     "slowapi>=0.1.9",
     "sqlalchemy[asyncio]>=2.1,<2.2",
-    "joserfc>=1.6.3",
-    "httpx2>=2.9.1",
-    "pathlib-abc>=0.5.2",
-    "redis>=8.1.0",
+    "uvicorn[standard]>=0.34.0",
 ]
-requires-python = "==3.14.*"
 
 [project.urls]
 repository = "https://github.com/killjoy1221/ValhallaSkinServer"
 
 [dependency-groups]
+dev = [
+    "pre-commit>=4.1.0",
+]
+lint = [
+    "boto3-stubs[s3,sts]>=1.36.6",
+    "ruff>=0.15.6",
+    "ty>=0.0.64",
+]
 test = [
     "asgi-lifespan>=2.1.0",
     "freezegun>=1.5.5",
@@ -50,21 +54,10 @@ test = [
     "pytest-sugar>=1.0.0",
     "tomlkit>=0.15.1",
 ]
-dev = [
-    "pre-commit>=4.1.0",
-]
-lint = [
-    "boto3-stubs[s3,sts]>=1.36.6",
-    "ruff>=0.15.6",
-    "ty>=0.0.64",
-]
 
-[tool.uv]
-default-groups = "all"
-exclude-dependencies = ["httpx"]
-
-[tool.uv.build-backend]
-module-root = "."
+[build-system]
+requires = ["uv_build>=0.12.17,<0.13.0"]
+build-backend = "uv_build"
 
 [tool.coverage]
 [tool.coverage.report]
@@ -74,7 +67,7 @@ exclude_lines = [
     "def __repr__",
     "if TYPE_CHECKING:",
     "@overload",
-    "class .*Protocol"
+    "class .*Protocol",
 ]
 skip_covered = true
 skip_empty = true
@@ -84,19 +77,45 @@ branch = true
 omit = [
     ".vscode*",
 ]
-[tool.pytest]
-filterwarnings = [
-    "ignore:'asyncio\\.iscoroutinefunction' is deprecated and slated for removal in Python 3\\.16;:DeprecationWarning"
-]
-addopts = ["-p", "valhalla.tests._pytest_plugin"]
-
-[tool.ruff]
-[tool.ruff.lint]
-select = [
-    "F", "E", "W", "B", "SIM", "I", "ANN", "UP",
-    "YTT", "FBT", "ASYNC", "C4", "DTZ",
-    "PIE", "RET", "SLF", "FLY", "PERF", "RUF"
-]
 
 [tool.fastapi]
 entrypoint = "app:app"
+
+[tool.pytest]
+addopts = ["-p", "valhalla.tests._pytest_plugin"]
+filterwarnings = [
+    "ignore:'asyncio\\.iscoroutinefunction' is deprecated and slated for removal in Python 3\\.16;:DeprecationWarning",
+]
+
+[tool.ruff.lint]
+select = [
+    "F",
+    "E",
+    "W",
+    "B",
+    "SIM",
+    "I",
+    "ANN",
+    "UP",
+    "YTT",
+    "FBT",
+    "ASYNC",
+    "C4",
+    "DTZ",
+    "PIE",
+    "RET",
+    "SLF",
+    "FLY",
+    "PERF",
+    "RUF",
+]
+
+[tool.tombi.format.rules]
+indent-width = 4
+
+[tool.uv]
+default-groups = "all"
+exclude-dependencies = ["httpx"]
+
+[tool.uv.build-backend]
+module-root = "."
