@@ -15,6 +15,7 @@ from ...crud import CRUD
 
 @get(
     "/user/{user_id:uuid}",
+    summary="Request user textures by UUID",
     middleware=[RateLimitConfig(("minute", 60)).middleware],
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
@@ -44,6 +45,7 @@ async def get_user_textures_by_uuid(
 
 @get(
     "/user/lookup/name/{name:str}",
+    summary="Request user textures by name",
     middleware=[RateLimitConfig(("minute", 20)).middleware],
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),

@@ -13,6 +13,7 @@ from ...schemas import BulkRequest, BulkResponse, UserTextures
 
 @post(
     "/bulk_textures",
+    summary="Request multiple user textures",
     status_code=status_codes.HTTP_200_OK,
     middleware=[RateLimitConfig(("minute", 10)).middleware],
     dependencies={
@@ -44,6 +45,6 @@ async def bulk_request_textures(
 
 router = Router(
     "",
-    tags=["User information"],
+    tags=["User Information"],
     route_handlers=[bulk_request_textures],
 )

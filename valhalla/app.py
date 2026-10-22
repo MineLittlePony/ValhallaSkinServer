@@ -94,6 +94,7 @@ def create_app(config: Settings | None = None) -> Litestar:
             client_kwargs=config.xbox_live_client_kwargs,
             route_prefix="/api/v1",
             retrieve_user_info=auth.login_with_xbox_userinfo,
+            tags=["Authentication"],
         )
 
     async def dependency_config(request: Request) -> Settings:

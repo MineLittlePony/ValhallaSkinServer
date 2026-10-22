@@ -69,6 +69,7 @@ class OAuthConfig[UserT: BaseUser = BaseUser]:
     login_url: str = "/auth/{name}"
     callback_url: str = "/auth/{name}/callback"
     opt: dict[str, Any] = field(default_factory=lambda: {"exclude_from_auth": True})
+    tags: list[str] = field(default_factory=list)
 
 
 class OAuthPlugin[UserT: BaseUser = BaseUser](InitPlugin):
@@ -111,6 +112,8 @@ class OAuthPlugin[UserT: BaseUser = BaseUser](InitPlugin):
         @get(
             config.login_url.format(name=name),
             name=f"authlib_{name}_login",
+            summary=f"Login for {name.title()}",
+            tags=config.tags,
             opt=config.opt,
         )
         async def login_handler(request: Request) -> Response:
@@ -120,6 +123,8 @@ class OAuthPlugin[UserT: BaseUser = BaseUser](InitPlugin):
         @get(
             config.callback_url.format(name=name),
             name=f"authlib_{name}_callback",
+            summary=f"Login Callback for {name.title()}",
+            tags=config.tags,
             opt=config.opt,
         )
         async def login_callback(request: Request) -> Response:

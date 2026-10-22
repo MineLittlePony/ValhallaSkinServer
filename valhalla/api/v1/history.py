@@ -13,9 +13,10 @@ from ...models import User
 
 
 @get(
+    summary="Get own texture history",
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
-    }
+    },
 )
 async def get_current_user_texture_history(
     *,
@@ -36,6 +37,7 @@ async def get_current_user_texture_history(
 
 @get(
     "/{user_id:uuid}",
+    summary="Get user's history by uuid",
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
     },

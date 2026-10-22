@@ -30,11 +30,24 @@ class LoginFormData(TypedDict):
     name: str
 
 
-@post("/minecraft", status_code=200, exclude_from_auth=True)
+@post(
+    "/minecraft",
+    summary="Login for Minecraft",
+    status_code=200,
+    exclude_from_auth=True,
+)
 async def minecraft_login(
     request: Request,
     data: URLEncodedBody[LoginFormData],
 ) -> LoginMinecraftHandshakeResponse:
+    """Login for Minecraft
+
+    After calling this endpoint, send a POST request to Mojang's API with the
+    `verifyToken` and `serverId`.
+
+    After making the request to Mojang, call the endpoint
+    `/api/v1/auth/minecraft/callback` with your `verifyToken`.
+    """
     settings: Settings = request.app.state.config
     store = request.app.stores.get(STORE_NAME)
     # Generate a random 32 bit integer. It will be checked later.
@@ -59,6 +72,7 @@ class CallbackFormData(TypedDict):
 
 @post(
     "/minecraft/callback",
+    summary="Login Callback for Minecraft",
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
     },
@@ -70,6 +84,7 @@ async def minecraft_login_callback(
     crud: NamedDependency[CRUD],
     data: URLEncodedBody[CallbackFormData],
 ) -> LoginResponse:
+    """Login Callback for Minecraft"""
     settings: Settings = request.app.state.config
     verify_token = data["verifyToken"]
     name = data["name"]

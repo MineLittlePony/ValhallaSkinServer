@@ -24,9 +24,8 @@ class PostFormData(BaseModel):
 @post(
     "/user/{user_id:uuid}/{skin_type:str}",
     status_code=200,
-    tags=["Texture Uploads"],
     dependencies=textures.post_texture.dependencies,
-    deprecated=True,
+    include_in_schema=False,
 )
 async def post_skin_old(
     request: Request[User, Any, Any],
@@ -58,9 +57,8 @@ class PutFormData:
 
 @put(
     "/user/{user_id:uuid}/{skin_type:str}",
-    tags=["Texture Uploads"],
     dependencies=textures.put_texture.dependencies,
-    deprecated=True,
+    include_in_schema=False,
 )
 async def put_skin_old(
     request: Request[User, Any, Any],
@@ -94,10 +92,9 @@ async def put_skin_old(
 
 @delete(
     "/user/{user_id:uuid}/{skin_type:str}",
-    tags=["Texture Uploads"],
     dependencies=textures.delete_texture.dependencies,
-    deprecated=True,
     status_code=200,
+    include_in_schema=False,
 )
 async def delete_skin_old(
     request: Request[User, Any, Any],
@@ -118,19 +115,15 @@ router = Router(
         delete_skin_old,
         post(
             "/auth/handshake",
-            tags=["Authentication"],
-            summary="Start authentication via Minecraft",
-            description="Aliased to `/api/v1/auth/minecraft`",
             dependencies=auth.minecraft_login.dependencies,
-            deprecated=True,
+            opt=auth.minecraft_login.opt,
+            include_in_schema=False,
         )(auth.minecraft_login.fn),
         post(
             "/auth/response",
-            tags=["Authentication"],
-            summary="Callback for authentication via Minecraft",
-            description="Aliased to `/api/v1/auth/minecraft/callback`",
             dependencies=auth.minecraft_login_callback.dependencies,
-            deprecated=True,
+            opt=auth.minecraft_login_callback.opt,
+            include_in_schema=False,
         )(auth.minecraft_login_callback.fn),
     ],
 )

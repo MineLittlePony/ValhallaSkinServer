@@ -29,6 +29,7 @@ LimitContentLength = Annotated[
 
 @get(
     "/textures",
+    summary="Get own textures",
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
     },
@@ -87,6 +88,7 @@ async def iter_upload_file(file: UploadFile) -> AsyncGenerator[bytes, Any]:
 
 @post(
     "/textures",
+    summary="Set a texture from a URL",
     status_code=204,
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
@@ -112,6 +114,7 @@ class TexturesPut(BaseModel):
 
 @put(
     "/textures",
+    summary="Upload a texture",
     status_code=204,
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
@@ -156,6 +159,7 @@ async def upload_file(
 
 @delete(
     "/textures",
+    summary="Delete a texture (query)",
     status_code=204,
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
@@ -177,6 +181,7 @@ class DeleteTexture(BaseModel):
 # deprecated, delete shouldn't have a body, and it's missing a s
 @delete(
     "/texture",
+    summary="Delete a texture (formdata)",
     dependencies=delete_texture.dependencies,
     deprecated=True,
 )
