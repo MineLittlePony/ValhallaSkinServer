@@ -2,8 +2,6 @@
 #
 # Items can be set via config.toml or dotenv.
 
-# debug = false
-
 # Disable this setting to remove the requirement for users to sign into Minecraft before
 # uploading their skins.
 #

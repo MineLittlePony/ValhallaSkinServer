@@ -36,7 +36,6 @@ class TestConfig(Settings):
 
 
 settings = TestConfig(
-    debug=True,
     secret_key=secrets.token_urlsafe(24),
     database_url=str(async_engine.url),
     online_mode=False,
@@ -59,12 +58,8 @@ def app() -> Litestar:
 
 @pytest.fixture
 async def client(app: Litestar) -> AsyncGenerator[AsyncTestClient]:
-    async with (
-        AsyncTestClient(app, raise_server_exceptions=False) as client,
-        async_engine.begin() as conn,
-    ):
-        # await conn.run_sync(Base.metadata.create_all)
-
+    app.debug = True
+    async with AsyncTestClient(app) as client, async_engine.begin() as conn:
         try:
             yield client
         finally:

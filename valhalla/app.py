@@ -101,7 +101,6 @@ def create_app(config: Settings | None = None) -> Litestar:
         return request.state["config"]
 
     return Litestar(
-        debug=config.debug,
         route_handlers=[
             index,
             *static_files,

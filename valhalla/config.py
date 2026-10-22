@@ -57,7 +57,6 @@ class Settings(BaseSettings):
     Items can be set via config.toml or dotenv.
     """
 
-    debug: bool = False
     online_mode: bool = Field(
         default=True,
         description="""
