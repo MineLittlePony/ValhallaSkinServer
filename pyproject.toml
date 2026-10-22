@@ -69,7 +69,6 @@ omit = [
 [tool.pytest]
 addopts = ["-p", "valhalla.tests._pytest_plugin"]
 filterwarnings = [
-    "ignore::jwt.warnings.InsecureKeyLengthWarning",
     "ignore:The declarative_mixin decorator was used:sqlalchemy.exc.SADeprecationWarning",
 ]
 
