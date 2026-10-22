@@ -5,36 +5,18 @@ import uuid
 from datetime import timedelta
 from typing import TypedDict
 
-# from authlib.integrations.base_client.async_app import OAuth2Base
 from litestar import Request, Router, get, post
-from litestar.datastructures import Cookie
 from litestar.di import NamedDependency, Provide
-from litestar.exceptions import ClientException, PermissionDeniedException
+from litestar.exceptions import PermissionDeniedException
 from litestar.params import URLEncodedBody
 from litestar.response import Redirect
 
-from ... import auth, mojang, xbox
+from ... import auth, mojang
 from ...config import Settings
 from ...crud import CRUD
 from ...schemas import LoginMinecraftHandshakeResponse, LoginResponse
 
 STORE_NAME = "auth-tokens"
-
-# xboxlive: OAuth2Base
-
-
-# @asynccontextmanager
-# async def lifespan(app: Litestar) -> AsyncGenerator[None]:
-#     global xboxlive
-#     config: Config = app.state["config"]
-#     xboxlive = OAuth().register(
-#         "xboxlive",
-#         client_id=config.xbox_live_client_id,
-#         client_secret=config.xbox_live_client_secret,
-#         server_metadata_url=config.xbox_live_server_metadata_url,
-#         client_kwargs=config.xbox_live_client_kwargs,
-#     )
-#     yield
 
 
 @get("/logout")
@@ -130,45 +112,6 @@ async def minecraft_login_callback(
     )
 
 
-@get("/xbox", exclude_from_auth=True)
-async def xbox_login(request: Request) -> Redirect:
-    callback = str(request.url_for("xbox_login_callback"))
-    callback = callback.replace("http://127.0.0.1", "http://localhost")
-    return await xboxlive.authorize_redirect(request, callback)
-
-
-@get("/xbox/callback", exclude_from_auth=True)
-async def xbox_login_callback(request: Request) -> Redirect:
-    if not request.client:
-        raise ClientException
-    try:
-        token = await xboxlive.authorize_access_token(request)
-        profile = await xbox.login_with_xbox(token["access_token"])
-    except (OAuthError, xbox.XboxLoginError) as e:
-        raise PermissionDeniedException(detail=str(e)) from None
-    else:
-        async with CRUD.create() as crud:
-            user = await crud.get_or_create_user(profile.id, profile.name)
-            expires = timedelta(days=365)
-            token = auth.token_from_user(request, user)
-
-            response = Redirect(
-                "/docs",
-                cookies=[
-                    Cookie(
-                        "token",
-                        value=token,
-                        secure=True,
-                        httponly=True,
-                        expires=int(expires.total_seconds()),
-                    )
-                ],
-            )
-
-            await crud.db.commit()
-            return response
-
-
 router = Router(
     "/auth",
     tags=["Authentication"],
@@ -176,7 +119,5 @@ router = Router(
         logout,
         minecraft_login,
         minecraft_login_callback,
-        # xbox_login,
-        # xbox_login_callback,
     ],
 )

@@ -1,6 +1,5 @@
-import logging
+import hashlib
 import os
-from datetime import timedelta
 
 import boto3
 from advanced_alchemy.extensions.litestar import SQLAlchemyAsyncConfig, SQLAlchemyPlugin
@@ -10,6 +9,7 @@ from litestar.config.compression import CompressionConfig
 from litestar.config.cors import CORSConfig
 from litestar.datastructures import State
 from litestar.exceptions import NotFoundException
+from litestar.middleware.session.client_side import CookieBackendConfig
 from litestar.openapi import OpenAPIConfig
 from litestar.openapi.plugins import (
     RapidocRenderPlugin,
@@ -21,19 +21,17 @@ from litestar.openapi.plugins import (
 from litestar.openapi.spec import License
 from litestar.plugins.pydantic import PydanticPlugin
 from litestar.response import Redirect
-from litestar.security.jwt import JWTAuth
+from litestar.security.jwt import JWTCookieAuth
 from litestar.static_files import create_static_files_router
 from litestar.stores.base import Store
 from litestar.stores.valkey import ValkeyStore
 
 import valhalla
 
-from . import api
-from .auth import user_from_token
+from . import api, auth
+from .auth import OAuthConfig, OAuthPlugin
 from .config import Settings
 from .models import Base, User
-
-log = logging.getLogger("uvicorn.error")
 
 
 def create_app(config: Settings | None = None) -> Litestar:
@@ -51,7 +49,7 @@ def create_app(config: Settings | None = None) -> Litestar:
             sts_client = boto3.client("sts")
             sts_client.get_caller_identity()
 
-    @get("/", include_in_schema=False)
+    @get("/", include_in_schema=False, exclude_from_auth=True)
     async def index() -> Redirect:
         for url in valhalla.__metadata__.get_all("Project-URL", []):
             name, url = str(url).split(", ")
@@ -80,15 +78,24 @@ def create_app(config: Settings | None = None) -> Litestar:
         metadata=Base.metadata,
     )
 
-    jwt_auth = JWTAuth[User](
+    jwt_auth = JWTCookieAuth[User](
         token_secret=config.secret_key,
-        retrieve_user_handler=user_from_token,
-        default_token_expiration=timedelta(hours=1),
+        retrieve_user_handler=auth.user_from_token,
         exclude=[
-            "^^/$",
             "^/docs",
         ],
     )
+
+    auth_config = {}
+    if config.xbox_live_client_id and config.xbox_live_client_secret:
+        auth_config["xbox"] = OAuthConfig(
+            server_metadata_url=config.xbox_live_server_metadata_url,
+            client_id=config.xbox_live_client_id,
+            client_secret=config.xbox_live_client_secret,
+            client_kwargs=config.xbox_live_client_kwargs,
+            route_prefix="/api/v1",
+            retrieve_user_info=auth.login_with_xbox_userinfo,
+        )
 
     async def dependency_config(request: Request) -> Settings:
         return request.state["config"]
@@ -121,6 +128,9 @@ def create_app(config: Settings | None = None) -> Litestar:
         compression_config=CompressionConfig("gzip"),
         cors_config=CORSConfig(allow_origins=["*"]),
         middleware=[
+            CookieBackendConfig(
+                secret=hashlib.sha256(config.secret_key.encode()).digest(),
+            ).middleware,
             jwt_auth.middleware,
         ],
         state=State(
@@ -133,6 +143,7 @@ def create_app(config: Settings | None = None) -> Litestar:
         plugins=[
             PydanticPlugin(prefer_alias=True),
             SQLAlchemyPlugin(sqlalchemy_config),
+            OAuthPlugin(auth_config),
         ],
         on_startup=[
             on_startup,
