@@ -116,9 +116,9 @@ def create_app(config: Settings | None = None) -> Litestar:
                 url="https://github.com/MineLittlePony/ValhallaSkinServer/blob/main/LICENSE",
             ),
             render_plugins=[
-                ScalarRenderPlugin(),
+                ScalarRenderPlugin(options={"agent": {"disabled": True}}),
                 RapidocRenderPlugin(),
-                RedocRenderPlugin(),
+                RedocRenderPlugin(version="v2.4.0"),
                 StoplightRenderPlugin(),
                 SwaggerRenderPlugin(),
             ],
