@@ -74,7 +74,6 @@ def create_app(config: Settings | None = None) -> Litestar:
 
     sqlalchemy_config = SQLAlchemyAsyncConfig(
         connection_string=config.get_database_url(),
-        create_all=True,
         metadata=Base.metadata,
     )
 
