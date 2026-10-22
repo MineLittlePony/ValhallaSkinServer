@@ -1,5 +1,6 @@
 import hashlib
 import os.path
+import secrets
 import shutil
 import tempfile
 from collections.abc import AsyncGenerator, Generator
@@ -36,6 +37,7 @@ class TestConfig(Settings):
 
 settings = TestConfig(
     debug=True,
+    secret_key=secrets.token_urlsafe(24),
     database_url=str(async_engine.url),
     online_mode=False,
     textures_path=os.path.join(tempdir, "textures"),

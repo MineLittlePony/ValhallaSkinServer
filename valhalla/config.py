@@ -44,6 +44,13 @@ class OtelConfig(BaseModel):
     )
 
 
+def _generate_secret() -> str:
+    secret = secrets.token_urlsafe(24)
+    with open(".env", "a") as f:
+        f.write(f"SECRET_KEY={secret!r}\n")
+    return secret
+
+
 class Settings(BaseSettings):
     """Configuration for the skin server.
 
@@ -70,12 +77,14 @@ WARNING:
     )
 
     secret_key: str = Field(
-        default="dev",
+        default_factory=_generate_secret,
         description="""
 The secret key used to sign the session data.
 
-It's important to change this from the default. Use the following command to create a
-new secret key.
+If omitted, it will generate a new secret using the `secrets` module, then save
+it as a value in the file `.env`.
+
+Use the following command to create a new secret key.
 
 $ openssl rand -base64 24
         """,
