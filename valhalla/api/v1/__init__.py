@@ -1,11 +1,15 @@
-from fastapi import APIRouter
+from litestar import Router
 
 from . import auth, bulk, history, legacy, textures, user
 
-router = APIRouter()
-router.include_router(auth.router)
-router.include_router(bulk.router)
-router.include_router(history.router)
-router.include_router(legacy.router)
-router.include_router(textures.router)
-router.include_router(user.router)
+router = Router(
+    "/v1",
+    route_handlers=[
+        auth.router,
+        bulk.router,
+        history.router,
+        legacy.router,
+        textures.router,
+        user.router,
+    ],
+)

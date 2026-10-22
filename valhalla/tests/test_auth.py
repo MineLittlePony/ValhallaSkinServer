@@ -1,39 +1,46 @@
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
+from typing import Any
+from uuid import uuid4
 
 import pytest
 from freezegun import freeze_time
-from joserfc.errors import ExpiredTokenError, InvalidClaimError
+from litestar import Litestar, Request
+from litestar.exceptions import NotAuthorizedException
+from litestar.security.jwt import JWTAuth
 
-from valhalla.auth import token_from_user, user_from_token
+from valhalla.auth import token_from_user
+from valhalla.models import User
 
 
 @pytest.mark.parametrize(
-    ("expire_in", "issued_at", "exc_type", "exc_match"),
+    ("ff_time", "exc_match"),
     [
         pytest.param(
-            timedelta(hours=-1),
-            None,
-            ExpiredTokenError,
-            r"^expired_token: The token is expired$",
+            timedelta(hours=2),
+            r"^401: Invalid token$",
             id="verify_exp",
         ),
         pytest.param(
-            timedelta(hours=1),
-            datetime(year=2026, month=10, day=6, tzinfo=UTC),
-            InvalidClaimError,
-            r"^invalid_claim: The token was issued in the future$",
+            timedelta(hours=-2),
+            r"^401: Invalid token$",
             id="verify_iss",
         ),
     ],
 )
-@freeze_time("2026-10-05")
 def test_auth_verify(
-    expire_in: timedelta,
-    issued_at: datetime | None,
-    exc_type: type[BaseException],
+    app: Litestar,
+    ff_time: timedelta,
     exc_match: str,
 ) -> None:
-    token = token_from_user(user_id=1, expire_in=expire_in, issued_at=issued_at)
+    state: Any = {"litestar_app": app}
+    request = Request(state)
+    user = User(uuid=uuid4(), name="Name")
+    with freeze_time("2026-10-05") as ft:
+        tkn = token_from_user(request, user)
 
-    with pytest.raises(exc_type, match=exc_match):
-        user_from_token(token)
+        ft.tick(ff_time)
+
+        jwt: JWTAuth = app.state.jwt
+        with pytest.raises(NotAuthorizedException, match=exc_match):
+            token = jwt.token_cls.decode(tkn, jwt.token_secret, jwt.algorithm)
+            jwt.retrieve_user_handler(token, request)

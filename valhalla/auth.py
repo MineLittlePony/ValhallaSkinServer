@@ -1,72 +1,29 @@
-import hashlib
-from datetime import UTC, datetime, timedelta
-from typing import Annotated
+from uuid import UUID
 
-from fastapi import Cookie, Depends, HTTPException
-from fastapi.security import OAuth2
-from joserfc import jwk, jwt
-from joserfc.errors import JoseError
-from starlette import status
+from advanced_alchemy.config import SQLAlchemyAsyncConfig
+from advanced_alchemy.extensions.litestar import SQLAlchemyPlugin
+from litestar import Request
+from litestar.connection import ASGIConnection
+from litestar.security.jwt import JWTAuth, Token
 
-from .config import Settings
-
-auth_scheme = OAuth2(auto_error=False)
+from .crud import CRUD
+from .models import User
 
 
-async def current_user_id(
-    header: Annotated[str | None, Depends(auth_scheme)],
-    cookie: Annotated[str | None, Cookie(alias="token")] = None,
-) -> int | None:
-    if header and header.startswith("Bearer "):
-        header = header[7:]
-    token = header or cookie
-    if token is None:
-        return None
+async def user_from_token(token: Token, connection: ASGIConnection) -> User:
+    sql_plugin = connection.app.plugins.get(SQLAlchemyPlugin)
+    config = sql_plugin.config[0]
+    assert isinstance(config, SQLAlchemyAsyncConfig)
 
-    try:
-        return user_from_token(token)
-    except JoseError:
-        return None
+    async with config.get_session() as db_session:
+        crud = CRUD(db_session)
+        user_id = UUID(token.sub)
+        user = await crud.get_user_by_uuid(user_id)
+        if user is None:
+            raise PermissionError
+        return user
 
 
-def require_user_id(
-    user_id: Annotated[int | None, Depends(current_user_id)],
-) -> int:
-    if user_id is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
-    return user_id
-
-
-jose_key: jwk.OctKey
-claims_validator = jwt.JWTClaimsRegistry()
-
-
-def init_jwk(settings: Settings) -> None:
-    global jose_key
-    jose_key = jwk.import_key(
-        hashlib.sha256(settings.secret_key.encode()).digest(), key_type="oct"
-    )
-
-
-def token_from_user(
-    user_id: int,
-    *,
-    expire_in: timedelta,
-    issued_at: datetime | None = None,
-) -> str:
-    if issued_at is None:
-        issued_at = datetime.now(UTC)
-    header = {"alg": "HS256"}
-    claims = {
-        "sid": user_id,
-        "iat": issued_at,
-        "exp": issued_at + expire_in,
-    }
-    return jwt.encode(header, claims, key=jose_key)
-
-
-def user_from_token(token: str, *, validate: bool = True) -> int | None:
-    entity = jwt.decode(token, key=jose_key, algorithms=["HS256"])
-    if validate:
-        claims_validator.validate(entity.claims)
-    return entity.claims["sid"]
+def token_from_user(request: Request, user: User) -> str:
+    jwt: JWTAuth = request.app.state.jwt
+    return jwt.create_token(str(user.uuid))

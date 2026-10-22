@@ -6,7 +6,7 @@ import pytest
 from moto import mock_aws
 
 from valhalla.config import Settings
-from valhalla.files import get_target_path
+from valhalla.files import get_save_path
 from valhalla.s3path import S3Path
 
 
@@ -28,7 +28,7 @@ def aws() -> Generator[None]:
 
 
 def test_filesystem() -> None:
-    fs = get_target_path(
+    fs = get_save_path(
         Settings(
             textures_bucket="test",
             textures_path="path",

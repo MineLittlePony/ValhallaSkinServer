@@ -1,84 +1,82 @@
 from datetime import datetime
-from typing import Annotated
+from typing import Any
 from urllib.parse import urljoin
-from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from litestar import Request, Router, get
+from litestar.di import NamedDependency, Provide
+from litestar.params import FromQuery
 
-from valhalla.api.v1.utils import get_textures_url
-
-from ... import models, schemas
-from ...auth import require_user_id
+from ... import schemas
+from ...config import Settings
 from ...crud import CRUD
+from ...models import User
 
-router = APIRouter(tags=["User History"])
 
-
-@router.get("/history")
+@get(
+    dependencies={
+        "crud": Provide(CRUD, sync_to_thread=False),
+    }
+)
 async def get_current_user_texture_history(
     *,
-    user_id: Annotated[int, Depends(require_user_id)],
-    textures_url: Annotated[str, Depends(get_textures_url)],
-    limit: int | None = None,
-    at: datetime | None = None,
-    show_duplicates: bool = False,
+    request: Request[User, Any, Any],
+    crud: NamedDependency[CRUD],
+    limit: FromQuery[int | None] = None,
+    at: FromQuery[datetime | None] = None,
+    show_duplicates: FromQuery[bool] = False,
 ) -> schemas.UserTextureHistory:
-    async with CRUD.create() as crud:
-        user = await crud.get_user(user_id)
-        if user is None:
-            raise HTTPException(status.HTTP_401_UNAUTHORIZE)
-        return await get_user_texture_history(
-            user=user,
-            limit=limit,
-            at=at,
-            show_duplicates=show_duplicates,
-            crud=crud,
-            textures_url=textures_url,
-        )
+    return await get_user_texture_history(
+        request=request,
+        limit=limit,
+        at=at,
+        show_duplicates=show_duplicates,
+        crud=crud,
+    )
 
 
-@router.get("/history/{user_id}")
+@get(
+    "/{user_id:uuid}",
+    dependencies={
+        "crud": Provide(CRUD, sync_to_thread=False),
+    },
+    exclude_from_auth=True,
+)
 async def get_user_texture_history_by_uuid(
     *,
-    textures_url: Annotated[str, Depends(get_textures_url)],
-    user_id: UUID,
-    limit: int | None = None,
-    at: datetime | None = None,
-    show_duplicates: bool = False,
+    request: Request[User, Any, Any],
+    crud: NamedDependency[CRUD],
+    limit: FromQuery[int | None] = None,
+    at: FromQuery[datetime | None] = None,
+    show_duplicates: FromQuery[bool] = False,
 ) -> schemas.UserTextureHistory:
-    async with CRUD.create() as crud:
-        user = await crud.get_user_by_uuid(user_id)
-        if user is None:
-            raise HTTPException(404)
-
-        return await get_user_texture_history(
-            user=user,
-            limit=limit,
-            at=at,
-            show_duplicates=show_duplicates,
-            crud=crud,
-            textures_url=textures_url,
-        )
+    return await get_user_texture_history(
+        request=request,
+        limit=limit,
+        at=at,
+        show_duplicates=show_duplicates,
+        crud=crud,
+    )
 
 
 async def get_user_texture_history(
     *,
-    user: models.User,
+    request: Request[User, Any, Any],
     limit: int | None,
     at: datetime | None,
     crud: CRUD,
-    textures_url: str,
     show_duplicates: bool,
 ) -> schemas.UserTextureHistory:
+    config: Settings = request.app.state.config
+    textures_url = config.get_textures_url(request)
     textures = await crud.get_user_textures_history(
-        user=user,
+        user=request.user,
         limit=limit,
         at=at,
         show_duplicates=show_duplicates,
     )
     return schemas.UserTextureHistory(
-        profile_id=user.uuid,
-        profile_name=user.name,
+        profile_id=request.user.uuid,
+        profile_name=request.user.name,
         textures={
             key: [
                 schemas.TextureHistoryEntry(
@@ -92,3 +90,13 @@ async def get_user_texture_history(
             for key, value in textures.items()
         },
     )
+
+
+router = Router(
+    "/history",
+    tags=["User History"],
+    route_handlers=[
+        get_current_user_texture_history,
+        get_user_texture_history_by_uuid,
+    ],
+)

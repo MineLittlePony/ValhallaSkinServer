@@ -1,7 +1,7 @@
 from uuid import UUID
 
 import httpx2
-from fastapi import HTTPException
+from litestar.exceptions import NotAuthorizedException
 
 from .schemas import BaseModel
 
@@ -32,4 +32,4 @@ async def has_joined(*, username: str, server_id: str) -> HasJoinedResponse:
                 pass
             else:
                 return HasJoinedResponse.model_validate(data)
-        raise HTTPException(401)
+        raise NotAuthorizedException()

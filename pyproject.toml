@@ -10,26 +10,14 @@ authors = [
 requires-python = "==3.14.*"
 dependencies = [
     "aiosqlite>=0.20.0",
-    "alembic>=1.14.1",
     "authlib>=1.9.1",
     "boto3>=1.36.6",
-    "expiringdict>=1.2.2",
-    "fastapi>=0.142.1",
-    "fastapi-cli>=0.0.32",
     "httpx2>=2.9.1",
-    "itsdangerous>=2.2.0",
-    "joserfc>=1.6.3",
+    "litestar[jwt,opentelemetry,pydantic,sqlalchemy,standard,valkey]>=2.25.0",
     "pathlib-abc>=0.5.2",
     "pillow>=11.1.0",
     "psycopg[binary]>=3.2.4",
-    "pydantic>=2.10.6",
     "pydantic-settings>=2.7.1",
-    "python-dotenv>=1.0.1",
-    "python-multipart>=0.0.31",
-    "redis>=8.1.0",
-    "slowapi>=0.1.9",
-    "sqlalchemy[asyncio]>=2.1,<2.2",
-    "uvicorn[standard]>=0.34.0",
 ]
 
 [project.urls]
@@ -84,7 +72,8 @@ entrypoint = "app:app"
 [tool.pytest]
 addopts = ["-p", "valhalla.tests._pytest_plugin"]
 filterwarnings = [
-    "ignore:'asyncio\\.iscoroutinefunction' is deprecated and slated for removal in Python 3\\.16;:DeprecationWarning",
+    "ignore::jwt.warnings.InsecureKeyLengthWarning",
+    "ignore:The declarative_mixin decorator was used:sqlalchemy.exc.SADeprecationWarning",
 ]
 
 [tool.ruff.lint]

@@ -73,7 +73,7 @@ async def test_legacy_v0(
     resp = await client.request(
         method, f"/api/user/{user.uuid}/skin", headers=user.auth_header, **kwargs
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 200, resp.content
     assert resp.json() == {"message": "OK"}
 
     resp = await client.get(f"/api/user/{user.uuid}")
@@ -84,7 +84,7 @@ async def test_legacy_v0(
     assert skin == steve_hash
 
     resp = await client.delete(f"/api/user/{user.uuid}/skin", headers=user.auth_header)
-    assert resp.status_code == 200
+    assert resp.status_code == 200, resp.content
     assert resp.json() == {"message": "skin cleared"}
 
     resp = await client.get(f"/api/user/{user.uuid}")

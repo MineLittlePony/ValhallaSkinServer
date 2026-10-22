@@ -34,12 +34,12 @@ async def test_bulk_users(client: AsyncClient, users: list[TestUser]) -> None:
                 "file": (test_skin.name, test_skin.open("rb"), "image/png"),
             },
         )
-        assert resp.status_code == 200
+        assert resp.status_code == 204, resp.content
 
     uuids = [str(u.uuid) for u in users]
 
     resp = await client.post("/api/v1/bulk_textures", json={"uuids": uuids})
-    assert resp.status_code == 200
+    assert resp.status_code == 200, resp.content
 
     data = resp.json()
     original_users = {user["profileId"] for user in data["users"]}

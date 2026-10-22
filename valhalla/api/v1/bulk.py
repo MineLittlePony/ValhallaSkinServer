@@ -1,39 +1,49 @@
-from fastapi import APIRouter, Depends, Request
+from typing import Any
 
+from litestar import Request, Router, post, status_codes
+from litestar.di import NamedDependency, Provide
+from litestar.middleware.rate_limit import RateLimitConfig
+from litestar.params import JSONBody
+
+from ...config import Settings
 from ...crud import CRUD
-from ...limit import limiter
+from ...models import User
 from ...schemas import BulkRequest, BulkResponse, UserTextures
-from .utils import get_textures_url
-
-router = APIRouter(tags=["User information"])
 
 
-@router.post("/bulk_textures")
-@limiter.shared_limit(
-    "10/minute",
-    scope="user",
-    error_message=(
-        "You have surpassed the request limit for this endpoint of 10 requests per"
-        " minute. Please don't try to scrape skins. Open an issue if you require"
-        " scraping."
-    ),
+@post(
+    "/bulk_textures",
+    status_code=status_codes.HTTP_200_OK,
+    middleware=[RateLimitConfig(("minute", 10)).middleware],
+    dependencies={
+        "crud": Provide(CRUD, sync_to_thread=False),
+    },
+    exclude_from_auth=True,
 )
 async def bulk_request_textures(
-    request: Request,
-    body: BulkRequest,
-    textures_url: str = Depends(get_textures_url),
+    request: Request[User, Any, Any],
+    crud: NamedDependency[CRUD],
+    data: JSONBody[BulkRequest],
 ) -> BulkResponse:
     """Bulk request several user textures.
 
     If a requested user does not have any textures, it is ignored.
     """
-    async with CRUD.create() as crud:
-        users = await crud.get_users_by_uuid_bulk(body.uuids)
-        by_uuid = {u.uuid: u for u in users}
-        user_data = await crud.get_user_textures_bulk(users)
+    config: Settings = request.app.state.config
+    textures_url = config.get_textures_url(request)
+    users = await crud.get_users_by_uuid_bulk(data.uuids)
+    by_uuid = {u.uuid: u for u in users}
+    user_data = await crud.get_user_textures_bulk(users)
     return BulkResponse(
         users=[
             UserTextures.from_sql(by_uuid[user], textures, textures_url)
             for user, textures in user_data.items()
         ]
     )
+
+
+router = Router(
+    "",
+    tags=["User information"],
+    route_handlers=[bulk_request_textures],
+)
