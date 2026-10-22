@@ -11,12 +11,13 @@ from litestar.exceptions import ClientException, HTTPException
 from litestar.params import FromQuery, HeaderParameter, JSONBody, MultipartBody
 from pydantic import BaseModel, ConfigDict, Json
 
-from ... import image, schemas
-from ...byteconv import mb
-from ...config import Settings
-from ...crud import CRUD
-from ...files import get_save_path, put_file
-from ...models import User
+from valhalla import image, schemas
+from valhalla.byteconv import mb
+from valhalla.config import Settings
+from valhalla.crud import CRUD
+from valhalla.files import get_save_path, put_file
+from valhalla.models import User
+
 from .user import get_user_textures
 
 max_upload_size = 5 * mb

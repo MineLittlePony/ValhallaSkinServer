@@ -7,10 +7,9 @@ from litestar.exceptions import NotFoundException
 from litestar.middleware.rate_limit import RateLimitConfig
 from litestar.params import FromPath, FromQuery
 
+from valhalla import models, schemas
 from valhalla.config import Settings
-
-from ... import models, schemas
-from ...crud import CRUD
+from valhalla.crud import CRUD
 
 
 @get(

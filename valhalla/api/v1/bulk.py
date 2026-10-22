@@ -5,10 +5,10 @@ from litestar.di import NamedDependency, Provide
 from litestar.middleware.rate_limit import RateLimitConfig
 from litestar.params import JSONBody
 
-from ...config import Settings
-from ...crud import CRUD
-from ...models import User
-from ...schemas import BulkRequest, BulkResponse, UserTextures
+from valhalla.config import Settings
+from valhalla.crud import CRUD
+from valhalla.models import User
+from valhalla.schemas import BulkRequest, BulkResponse, UserTextures
 
 
 @post(

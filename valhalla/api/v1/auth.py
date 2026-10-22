@@ -11,10 +11,10 @@ from litestar.exceptions import PermissionDeniedException
 from litestar.params import URLEncodedBody
 from litestar.response import Redirect
 
-from ... import auth, mojang
-from ...config import Settings
-from ...crud import CRUD
-from ...schemas import LoginMinecraftHandshakeResponse, LoginResponse
+from valhalla import auth, mojang
+from valhalla.config import Settings
+from valhalla.crud import CRUD
+from valhalla.schemas import LoginMinecraftHandshakeResponse, LoginResponse
 
 STORE_NAME = "auth-tokens"
 

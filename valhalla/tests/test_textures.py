@@ -3,7 +3,8 @@ from pathlib import Path
 import pytest
 from litestar.exceptions import HTTPException
 
-from .. import image
+from valhalla import image
+
 from .conftest import assets
 
 bad = assets / "bad"

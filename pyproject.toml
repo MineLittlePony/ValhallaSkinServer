@@ -85,6 +85,7 @@ select = [
     "YTT",
     "FBT",
     "ASYNC",
+    "TID",
     "C4",
     "DTZ",
     "PIE",

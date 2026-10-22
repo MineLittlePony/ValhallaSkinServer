@@ -1,6 +1,6 @@
 import pytest
 
-from ..config import resolve_db
+from valhalla.config import resolve_db
 
 
 @pytest.mark.parametrize(

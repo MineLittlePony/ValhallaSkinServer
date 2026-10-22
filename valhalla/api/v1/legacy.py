@@ -9,10 +9,11 @@ from litestar.exceptions import PermissionDeniedException
 from litestar.params import FromPath, FromQuery, MultipartBody, URLEncodedBody
 from pydantic import AnyHttpUrl
 
-from ... import schemas
-from ...crud import CRUD
-from ...models import User
-from ...schemas import BaseModel
+from valhalla import schemas
+from valhalla.crud import CRUD
+from valhalla.models import User
+from valhalla.schemas import BaseModel
+
 from . import auth, textures
 from .textures import LimitContentLength
 

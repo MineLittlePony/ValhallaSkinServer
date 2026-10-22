@@ -6,10 +6,10 @@ from litestar import Request, Router, get
 from litestar.di import NamedDependency, Provide
 from litestar.params import FromQuery
 
-from ... import schemas
-from ...config import Settings
-from ...crud import CRUD
-from ...models import User
+from valhalla import schemas
+from valhalla.config import Settings
+from valhalla.crud import CRUD
+from valhalla.models import User
 
 
 @get(

@@ -16,9 +16,9 @@ from pydantic_settings import SettingsConfigDict
 from pytest_httpx import HTTPXMock
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from ..app import create_app
-from ..config import Settings
-from ..models import Base
+from valhalla.app import create_app
+from valhalla.config import Settings
+from valhalla.models import Base
 
 assets = Path(__file__).parent / "assets"
 
