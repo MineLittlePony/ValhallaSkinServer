@@ -1,10 +1,12 @@
 from datetime import datetime
 from typing import Any
 from urllib.parse import urljoin
+from uuid import UUID
 
 from litestar import Request, Router, get
 from litestar.di import NamedDependency, Provide
-from litestar.params import FromQuery
+from litestar.exceptions import NotFoundException
+from litestar.params import FromPath, FromQuery
 
 from valhalla import schemas
 from valhalla.config import Settings
@@ -28,6 +30,7 @@ async def get_current_user_texture_history(
     show_duplicates: FromQuery[bool] = False,
 ) -> schemas.UserTextureHistory:
     return await get_user_texture_history(
+        request.user,
         request=request,
         limit=limit,
         at=at,
@@ -47,12 +50,17 @@ async def get_current_user_texture_history(
 async def get_user_texture_history_by_uuid(
     *,
     request: Request[User, Any, Any],
+    user_id: FromPath[UUID],
     crud: NamedDependency[CRUD],
     limit: FromQuery[int | None] = None,
     at: FromQuery[datetime | None] = None,
     show_duplicates: FromQuery[bool] = False,
 ) -> schemas.UserTextureHistory:
+    user = await crud.get_user_by_uuid(user_id)
+    if user is None:
+        raise NotFoundException(detail="User not found")
     return await get_user_texture_history(
+        user,
         request=request,
         limit=limit,
         at=at,
@@ -62,6 +70,7 @@ async def get_user_texture_history_by_uuid(
 
 
 async def get_user_texture_history(
+    user: User,
     *,
     request: Request[User, Any, Any],
     limit: int | None,
@@ -72,14 +81,14 @@ async def get_user_texture_history(
     config: Settings = request.app.state.config
     textures_url = config.get_textures_url(request)
     textures = await crud.get_user_textures_history(
-        user=request.user,
+        user=user,
         limit=limit,
         at=at,
         show_duplicates=show_duplicates,
     )
     return schemas.UserTextureHistory(
-        profile_id=request.user.uuid,
-        profile_name=request.user.name,
+        profile_id=user.uuid,
+        profile_name=user.name,
         textures={
             key: [
                 schemas.TextureHistoryEntry(
