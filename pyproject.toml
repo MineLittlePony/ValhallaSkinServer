@@ -113,6 +113,9 @@ select = [
 [tool.tombi.format.rules]
 indent-width = 4
 
+[tool.ty.rules]
+experimental-syntax = "ignore"
+
 [tool.uv]
 default-groups = "all"
 exclude-dependencies = ["httpx"]

@@ -14,9 +14,10 @@ from litestar.datastructures import URL
 from litestar.response import Redirect as RedirectResponse
 
 if TYPE_CHECKING:
-    from ty_extensions import Intersection
-
     from .integration import LitestarIntegration
+
+
+type AsyncOAuthMixin = AsyncOAuth1Mixin | AsyncOAuth2Mixin
 
 
 class LitestarAppMixin:
@@ -34,7 +35,7 @@ class LitestarAppMixin:
             raise RuntimeError("Missing state value")
 
     async def authorize_redirect(
-        self: Intersection[Self, AsyncOAuth1Mixin | AsyncOAuth2Mixin],
+        self: Self & AsyncOAuthMixin,
         request: Request,
         redirect_uri: str | URL | None = None,
         **kwargs: object,
