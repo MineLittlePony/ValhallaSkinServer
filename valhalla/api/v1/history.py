@@ -17,6 +17,7 @@ from valhalla.models import User
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
     },
+    security=[{"BearerToken": []}],
 )
 async def get_current_user_texture_history(
     *,

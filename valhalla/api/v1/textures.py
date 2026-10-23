@@ -197,6 +197,7 @@ async def delete_texture_deprecated(
 router = Router(
     "",
     tags=["Texture Uploads"],
+    security=[{"BearerToken": []}],
     route_handlers=[
         get_texture,
         put_texture,

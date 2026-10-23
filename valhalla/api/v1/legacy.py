@@ -1,11 +1,12 @@
 from dataclasses import dataclass
 from typing import Any
-from uuid import UUID
 
 from litestar import Request, Router, delete, post, put
+from litestar.connection import ASGIConnection
 from litestar.datastructures import UploadFile
 from litestar.di import NamedDependency
 from litestar.exceptions import PermissionDeniedException
+from litestar.handlers import BaseRouteHandler
 from litestar.params import FromPath, FromQuery, MultipartBody, URLEncodedBody
 from pydantic import AnyHttpUrl
 
@@ -18,6 +19,17 @@ from . import auth, textures
 from .textures import LimitContentLength
 
 
+def check_user_id(
+    connection: ASGIConnection[Any, User, Any, Any], _: BaseRouteHandler
+) -> None:
+    """
+    Checks that the logged in user matches the `user_id` from the request `path_params`.
+    If they don't match, raises a `PermissionDeniedException`.
+    """
+    if connection.path_params["user_id"] != connection.user.uuid:
+        raise PermissionDeniedException
+
+
 class PostFormData(BaseModel):
     file: AnyHttpUrl
 
@@ -26,21 +38,19 @@ class PostFormData(BaseModel):
     "/user/{user_id:uuid}/{skin_type:str}",
     status_code=200,
     dependencies=textures.post_texture.dependencies,
+    guards=[check_user_id],
     include_in_schema=False,
 )
 async def post_skin_old(
     request: Request[User, Any, Any],
     crud: NamedDependency[CRUD],
     data: URLEncodedBody[PostFormData],
-    user_id: FromQuery[UUID],
     skin_type: FromQuery[str],
 ) -> None:
     """Upload a skin texture from a url
 
     Deprecated: Use the /textures endpoint to upload skins
     """
-    if user_id != request.user.uuid:
-        raise PermissionDeniedException
     form = await request.form()
     meta = {k: v for k, v in form.items() if isinstance(v, str)}
     body = schemas.TexturePost.model_construct(
@@ -59,12 +69,12 @@ class PutFormData:
 @put(
     "/user/{user_id:uuid}/{skin_type:str}",
     dependencies=textures.put_texture.dependencies,
+    guards=[check_user_id],
     include_in_schema=False,
 )
 async def put_skin_old(
     request: Request[User, Any, Any],
     crud: NamedDependency[CRUD],
-    user_id: FromPath[UUID],
     skin_type: FromPath[str],
     content_length: LimitContentLength,
     data: MultipartBody[PutFormData],
@@ -73,8 +83,6 @@ async def put_skin_old(
 
     Deprecated: Use the /textures endpoint to upload skins
     """
-    if user_id != request.user.uuid:
-        raise PermissionDeniedException
 
     form = await request.form()
     meta = {k: v for k, v in form.items() if isinstance(v, str)}
@@ -94,17 +102,15 @@ async def put_skin_old(
 @delete(
     "/user/{user_id:uuid}/{skin_type:str}",
     dependencies=textures.delete_texture.dependencies,
+    guards=[check_user_id],
     status_code=200,
     include_in_schema=False,
 )
 async def delete_skin_old(
     request: Request[User, Any, Any],
     crud: NamedDependency[CRUD],
-    user_id: FromPath[UUID],
     skin_type: FromPath[str],
 ) -> None:
-    if user_id != request.user.uuid:
-        raise PermissionDeniedException
     await textures.delete_texture.fn(request, crud, skin_type)
 
 
