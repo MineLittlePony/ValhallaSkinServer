@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.urls]
-repository = "https://github.com/killjoy1221/ValhallaSkinServer"
+repository = "https://github.com/MineLittlePony/ValhallaSkinServer"
 
 [dependency-groups]
 dev = [

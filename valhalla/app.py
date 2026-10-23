@@ -4,11 +4,9 @@ import os
 import boto3
 from advanced_alchemy.extensions.litestar import SQLAlchemyAsyncConfig, SQLAlchemyPlugin
 from litestar import Litestar, Request, get
-from litestar import status_codes as status
 from litestar.config.compression import CompressionConfig
 from litestar.config.cors import CORSConfig
 from litestar.datastructures import State
-from litestar.exceptions import NotFoundException
 from litestar.middleware.session.client_side import CookieBackendConfig
 from litestar.openapi import OpenAPIConfig
 from litestar.openapi.plugins import (
@@ -31,6 +29,7 @@ import valhalla
 from . import api, auth
 from .auth import OAuthConfig, OAuthPlugin
 from .config import Settings
+from .github import github_url
 from .models import Base, User
 
 
@@ -51,11 +50,7 @@ def create_app(config: Settings | None = None) -> Litestar:
 
     @get("/", include_in_schema=False, exclude_from_auth=True)
     async def index() -> Redirect:
-        for url in valhalla.__metadata__.get_all("Project-URL", []):
-            name, url = str(url).split(", ")
-            if name.lower() == "repository":
-                return Redirect(url, status_code=status.HTTP_308_PERMANENT_REDIRECT)
-        raise NotFoundException
+        return Redirect(github_url())
 
     static_files = []
     if config.textures_bucket is None:
@@ -83,6 +78,10 @@ def create_app(config: Settings | None = None) -> Litestar:
         exclude=[
             "^/docs",
         ],
+    )
+
+    session_backend = CookieBackendConfig(
+        secret=hashlib.sha256(config.secret_key.encode()).digest()
     )
 
     auth_config = {}
@@ -114,7 +113,7 @@ def create_app(config: Settings | None = None) -> Litestar:
             license=License(
                 name="GNU Affero General Public License",
                 identifier="AGPL-3.0-only",
-                url="https://github.com/MineLittlePony/ValhallaSkinServer/blob/main/LICENSE",
+                url=github_url("LICENSE"),
             ),
             render_plugins=[
                 ScalarRenderPlugin(options={"agent": {"disabled": True}}),
@@ -127,9 +126,7 @@ def create_app(config: Settings | None = None) -> Litestar:
         compression_config=CompressionConfig("gzip"),
         cors_config=CORSConfig(allow_origins=["*"]),
         middleware=[
-            CookieBackendConfig(
-                secret=hashlib.sha256(config.secret_key.encode()).digest(),
-            ).middleware,
+            session_backend.middleware,
             jwt_auth.middleware,
         ],
         state=State(
