@@ -32,4 +32,4 @@ async def has_joined(*, username: str, server_id: str) -> HasJoinedResponse:
                 pass
             else:
                 return HasJoinedResponse.model_validate(data)
-        raise NotAuthorizedException()
+        raise NotAuthorizedException

@@ -10,7 +10,7 @@ from valhalla.files import get_save_path
 from valhalla.s3path import S3Path
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(autouse=True)
 def aws_credentials() -> None:
     os.environ["AWS_ACCESS_KEY_ID"] = "testing"
     os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
@@ -19,7 +19,7 @@ def aws_credentials() -> None:
     os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
 
-@pytest.fixture(scope="function", autouse=True)
+@pytest.fixture(autouse=True)
 def aws() -> Generator[None]:
     with mock_aws():
         s3_client = boto3.client("s3")

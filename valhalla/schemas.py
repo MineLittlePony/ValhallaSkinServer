@@ -149,12 +149,6 @@ class UserTextureHistory(BaseModel):
     )
 
 
-# class TextureUpload(BaseModel):
-#     type: str
-#     file: MultipartBody[UploadFile] = File(media_type="image/png")
-#     metadata: dict[str, str] | None = None
-
-
 def validate_texture_type(s: str) -> str:
     if ":" in s:
         raise ClientException(

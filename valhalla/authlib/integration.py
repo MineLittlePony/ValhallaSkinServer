@@ -1,7 +1,7 @@
 import json
 import time
 from collections.abc import Hashable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, override
 
 from authlib.integrations.base_client import FrameworkIntegration
 
@@ -85,5 +85,6 @@ class LitestarIntegration(FrameworkIntegration):
         pass
 
     @staticmethod
+    @override
     def load_config(oauth: OAuth, name: str, params: list[str]) -> dict[str, Any]:
         return {}

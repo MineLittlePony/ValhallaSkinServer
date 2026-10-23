@@ -94,7 +94,21 @@ select = [
     "FLY",
     "PERF",
     "RUF",
+    "ERA",
+    "S",
+    "BLE",
+    "ISC",
+    "ICN",
+    "LOG",
+    "G",
+    "PT",
+    "RSE",
+    "SLOT",
+    "ARG",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"valhalla/tests/*" = ["S101", "S105"]
 
 [tool.tombi.format.rules]
 indent-width = 4

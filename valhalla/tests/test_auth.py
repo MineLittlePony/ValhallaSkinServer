@@ -13,25 +13,13 @@ from valhalla.models import User
 
 
 @pytest.mark.parametrize(
-    ("ff_time", "exc_match"),
+    "ff_time",
     [
-        pytest.param(
-            timedelta(hours=2),
-            r"^401: Invalid token$",
-            id="verify_exp",
-        ),
-        pytest.param(
-            timedelta(hours=-2),
-            r"^401: Invalid token$",
-            id="verify_iss",
-        ),
+        pytest.param(timedelta(hours=2), id="verify_exp"),
+        pytest.param(timedelta(hours=-2), id="verify_iss"),
     ],
 )
-def test_auth_verify(
-    app: Litestar,
-    ff_time: timedelta,
-    exc_match: str,
-) -> None:
+def test_auth_verify(app: Litestar, ff_time: timedelta) -> None:
     state: Any = {"litestar_app": app}
     request = Request(state)
     user = User(uuid=uuid4(), name="Name")
@@ -41,6 +29,5 @@ def test_auth_verify(
         ft.tick(ff_time)
 
         jwt: JWTAuth = app.state.jwt
-        with pytest.raises(NotAuthorizedException, match=exc_match):
-            token = jwt.token_cls.decode(tkn, jwt.token_secret, jwt.algorithm)
-            jwt.retrieve_user_handler(token, request)
+        with pytest.raises(NotAuthorizedException, match=r"^401: Invalid token$"):
+            jwt.token_cls.decode(tkn, jwt.token_secret, jwt.algorithm)

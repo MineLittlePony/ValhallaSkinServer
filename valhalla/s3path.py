@@ -43,6 +43,7 @@ class S3PathInfo(PathInfo):
     def is_file(self, *, follow_symlinks: bool = True) -> bool:
         return self.exists()
 
+    @override
     def is_symlink(self, *, follow_symlinks: bool = True) -> bool:
         s = self.stat()
         return s is not None and "WebsiteRedirectLocation" in s

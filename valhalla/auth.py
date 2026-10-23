@@ -21,15 +21,14 @@ from .xbox import XboxLoginError, login_with_xbox
 
 async def user_from_token(token: Token, connection: ASGIConnection) -> User:
     sql_plugin = connection.app.plugins.get(SQLAlchemyPlugin)
-    config = sql_plugin.config[0]
-    assert isinstance(config, SQLAlchemyAsyncConfig)
+    config = cast("SQLAlchemyAsyncConfig", sql_plugin.config[0])
 
     async with config.get_session() as db_session:
         crud = CRUD(db_session)
         user_id = UUID(token.sub)
         user = await crud.get_user_by_uuid(user_id)
         if user is None:
-            raise PermissionError
+            raise PermissionDeniedException
         return user
 
 

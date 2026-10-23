@@ -7,7 +7,7 @@ from .conftest import TestUser, assets
 test_skin = assets / "good" / "64x64.png"
 
 
-async def test_unknown_bulk_user(client: AsyncClient, user: TestUser) -> None:
+async def test_unknown_bulk_user(client: AsyncClient) -> None:
     uuid = UUID(bytes=b"\0" * 16)
     uuid2 = UUID(bytes=b"\0" * 15 + b"1")
     resp = await client.post(

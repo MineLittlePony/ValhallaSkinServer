@@ -125,7 +125,7 @@ async def users(client: AsyncTestClient) -> list[TestUser]:
     return users
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def steve_uri(request: pytest.FixtureRequest, httpx_mock: HTTPXMock) -> str | Path:
     uri: tuple[str, Path] | Path = request.param
     if isinstance(uri, tuple):
