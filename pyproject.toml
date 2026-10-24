@@ -26,6 +26,7 @@ repository = "https://github.com/MineLittlePony/ValhallaSkinServer"
 [dependency-groups]
 dev = [
     "pre-commit>=4.1.0",
+    "tomlkit>=0.15.1",
     # TODO: Move to main dependencies once http2 becomes standard in uvicorn
     "zttp>=0.0.34",
 ]
@@ -35,14 +36,12 @@ lint = [
     "ty>=0.0.64",
 ]
 test = [
-    "asgi-lifespan>=2.1.0",
     "freezegun>=1.5.5",
     "moto[s3,sts]>=5.0.27",
     "pytest>=8.3.4",
     "pytest-cov>=7.0.0",
     "pytest-httpx>=0.35.0",
     "pytest-sugar>=1.0.0",
-    "tomlkit>=0.15.1",
 ]
 
 [build-system]
