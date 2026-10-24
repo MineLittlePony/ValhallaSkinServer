@@ -49,7 +49,6 @@ After calling this endpoint, send a POST request to Mojang's API with the
 After making the request to Mojang, call the endpoint
 `/api/v1/auth/minecraft/callback` with your `verifyToken`.
     """,
-    status_code=status_codes.HTTP_200_OK,
     exclude_from_auth=True,
 )
 async def minecraft_login(
@@ -95,7 +94,6 @@ This endpoint should be called after making a request to Mojang.
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
     },
-    status_code=status_codes.HTTP_302_FOUND,
     exclude_from_auth=True,
 )
 async def minecraft_login_callback(

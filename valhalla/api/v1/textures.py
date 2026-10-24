@@ -100,6 +100,7 @@ Upload sizes are limited to 5MB.
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
     },
+    status_code=status_codes.HTTP_204_NO_CONTENT,
     raises=[ContentTooLargeException],
 )
 async def post_texture(
@@ -131,6 +132,7 @@ Upload sizes are limited to 5MB.
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
     },
+    status_code=status_codes.HTTP_204_NO_CONTENT,
     raises=[ContentTooLargeException],
 )
 async def put_texture(

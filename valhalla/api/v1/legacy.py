@@ -35,7 +35,7 @@ class PostFormData(BaseModel):
 
 @post(
     "/user/{user_id:uuid}/{skin_type:str}",
-    status_code=status_codes.HTTP_200_OK,
+    status_code=textures.post_texture.status_code,
     dependencies=textures.post_texture.dependencies,
     guards=[check_user_id],
     include_in_schema=False,

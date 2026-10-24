@@ -37,7 +37,7 @@ async def test_legacy_upload(
     resp = await client.request(
         method, f"/api/v1/user/{user.uuid}/skin", headers=user.auth_header, **kwargs
     )
-    assert resp.status_code == 200, resp.json()
+    assert resp.status_code == 200, resp.content
 
 
 @pytest.mark.parametrize(
@@ -77,7 +77,7 @@ async def test_legacy_v0(
     assert resp.json() == {"message": "OK"}
 
     resp = await client.get(f"/api/user/{user.uuid}")
-    assert resp.status_code == 200
+    assert resp.status_code == 200, resp.content
 
     data = resp.json()
     skin = data["textures"]["skin"]["url"]
@@ -88,6 +88,6 @@ async def test_legacy_v0(
     assert resp.json() == {"message": "skin cleared"}
 
     resp = await client.get(f"/api/user/{user.uuid}")
-    assert resp.status_code == 200
+    assert resp.status_code == 200, resp.content
 
     assert "skin" not in resp.json()["textures"]
