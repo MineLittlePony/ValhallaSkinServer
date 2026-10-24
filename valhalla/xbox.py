@@ -1,6 +1,6 @@
-import datetime
 import enum
 from collections.abc import Awaitable, Callable
+from datetime import datetime
 from typing import Any, overload
 from uuid import UUID
 
@@ -87,8 +87,8 @@ class MinecraftAuth(BaseModel):
 
 
 class XboxAuth(BaseModel):
-    IssueInstant: datetime.datetime
-    NotAfter: datetime.datetime
+    IssueInstant: datetime
+    NotAfter: datetime
     Token: str
     DisplayClaims: dict[str, list[dict[str, str]]]
 

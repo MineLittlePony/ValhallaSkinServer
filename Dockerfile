@@ -14,7 +14,11 @@ ENV UV_NO_DEFAULT_GROUPS=1 \
 
 COPY --from=ghcr.io/astral-sh/uv:0.13.2 /uv /uvx /bin/
 
-COPY . /app
+COPY pyproject.toml uv.lock *.md LICENSE config.toml ./
+RUN uv sync --no-install-project
+
+COPY valhalla valhalla
+COPY migrations migrations
 
 RUN uv sync
 
@@ -22,12 +26,12 @@ FROM python_base
 
 COPY --from=builder /app /app
 
-ENV PATH=$PATH:/app/.venv/bin
+ENV PATH=$PATH:/app/.venv/bin \
+    LITESTAR_APP=valhalla.app:create_app
 
 # default port, heroku can override this
 ENV PORT=8080
-CMD alembic upgrade head && \
-    fastapi run \
-    --port $PORT \
-    --proxy-headers \
-    --forwarded-allow-ips '*'
+CMD litestar db upgrade --no-prompt && \
+    litestar run \
+    --host 0.0.0.0 \
+    --port $PORT

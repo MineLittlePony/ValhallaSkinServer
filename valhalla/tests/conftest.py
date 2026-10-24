@@ -1,5 +1,6 @@
 import hashlib
 import os.path
+import secrets
 import shutil
 import tempfile
 from collections.abc import AsyncGenerator, Generator
@@ -9,16 +10,15 @@ from uuid import UUID
 
 import anyio
 import pytest
-from asgi_lifespan import LifespanManager
-from httpx2 import ASGITransport, AsyncClient
+from litestar import Litestar
+from litestar.testing import AsyncTestClient
 from pydantic_settings import SettingsConfigDict
 from pytest_httpx import HTTPXMock
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from .. import auth
-from ..app import create_app
-from ..config import Settings
-from ..models import Base
+from valhalla.app import create_app
+from valhalla.config import Settings
+from valhalla.models import Base
 
 assets = Path(__file__).parent / "assets"
 
@@ -36,6 +36,7 @@ class TestConfig(Settings):
 
 
 settings = TestConfig(
+    secret_key=secrets.token_urlsafe(24),
     database_url=str(async_engine.url),
     online_mode=False,
     textures_path=os.path.join(tempdir, "textures"),
@@ -46,25 +47,21 @@ settings = TestConfig(
 
 @pytest.fixture(autouse=True, scope="session")
 def setup() -> Generator[None]:
-    auth.init_jwk(settings)
     yield
     shutil.rmtree(tempdir)
 
 
 @pytest.fixture
-async def client() -> AsyncGenerator[AsyncClient]:
-    app = create_app(settings)
+def app() -> Litestar:
+    return create_app(settings)
 
-    async with (
-        LifespanManager(app),
-        AsyncClient(
-            base_url="http://testserver",
-            transport=ASGITransport(app),
-        ) as client,
-        async_engine.begin() as conn,
-    ):
+
+@pytest.fixture
+async def client(app: Litestar) -> AsyncGenerator[AsyncTestClient]:
+    app.debug = True
+    async with AsyncTestClient(app) as client, async_engine.begin() as conn:
+        client.headers["accept"] = "application/json"
         await conn.run_sync(Base.metadata.create_all)
-
         try:
             yield client
         finally:
@@ -96,34 +93,31 @@ class TestUser:
             return {}
         return {"authorization": self.access_token}
 
-    async def login(self, client: AsyncClient) -> Self:
-        data = (
-            (await client.post("/api/v1/auth/minecraft", data={"name": self.name}))
-            .raise_for_status()
-            .json()
+    async def login(self, client: AsyncTestClient) -> Self:
+        resp = await client.post("/api/v1/auth/minecraft", data={"name": self.name})
+        assert resp.is_success, f"handshake failed: {resp.content!r}"
+        data = resp.json()
+
+        callback_resp = await client.post(
+            "/api/v1/auth/minecraft/callback",
+            data={"name": self.name, "verifyToken": data["verifyToken"]},
         )
-        token = (
-            (
-                await client.post(
-                    "/api/v1/auth/minecraft/callback",
-                    data={"name": self.name, "verifyToken": data["verifyToken"]},
-                )
-            )
-            .raise_for_status()
-            .json()
-        )
+        assert callback_resp.is_success, f"callback failed: {callback_resp.content!r}"
+        token = callback_resp.json()
+
         self.uuid = UUID(token["userId"])
         self.access_token = token["accessToken"]
+
         return self
 
 
 @pytest.fixture
-async def user(client: AsyncClient) -> TestUser:
+async def user(client: AsyncTestClient) -> TestUser:
     return await TestUser("TestUser").login(client)
 
 
 @pytest.fixture
-async def users(client: AsyncClient) -> list[TestUser]:
+async def users(client: AsyncTestClient) -> list[TestUser]:
     """Fixture to get a list of random users"""
     users = [TestUser(f"TestUser{n}") for n in range(1, 11)]
     async with anyio.create_task_group() as tg:
@@ -132,7 +126,7 @@ async def users(client: AsyncClient) -> list[TestUser]:
     return users
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def steve_uri(request: pytest.FixtureRequest, httpx_mock: HTTPXMock) -> str | Path:
     uri: tuple[str, Path] | Path = request.param
     if isinstance(uri, tuple):

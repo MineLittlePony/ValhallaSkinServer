@@ -1,87 +1,147 @@
-import logging
+import hashlib
 import os
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
-from typing import Any
 
 import boto3
-from fastapi import FastAPI, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
-from fastapi.responses import RedirectResponse
-from fastapi.staticfiles import StaticFiles
-from sqlalchemy.ext.asyncio import create_async_engine
-from starlette.middleware.sessions import SessionMiddleware
+from advanced_alchemy.extensions.litestar import SQLAlchemyAsyncConfig, SQLAlchemyPlugin
+from litestar import Litestar, Request, get
+from litestar.config.compression import CompressionConfig
+from litestar.config.cors import CORSConfig
+from litestar.datastructures import State
+from litestar.middleware.session.client_side import CookieBackendConfig
+from litestar.openapi import OpenAPIConfig
+from litestar.openapi.plugins import (
+    RapidocRenderPlugin,
+    RedocRenderPlugin,
+    ScalarRenderPlugin,
+    StoplightRenderPlugin,
+    SwaggerRenderPlugin,
+)
+from litestar.openapi.spec import License
+from litestar.plugins.pydantic import PydanticPlugin
+from litestar.response import Redirect
+from litestar.security.jwt import JWTCookieAuth
+from litestar.static_files import create_static_files_router
+from litestar.stores.base import Store
+from litestar.stores.valkey import ValkeyStore
 
 import valhalla
 
-from . import api, auth, limit, models
+from . import api, auth
+from .auth import OAuthConfig, OAuthPlugin
 from .config import Settings
-from .database import SessionLocal
+from .github import github_url
+from .models import Base, User
 
-log = logging.getLogger("uvicorn.error")
 
-
-def create_app(config: Settings | None = None) -> FastAPI:
+def create_app(config: Settings | None = None) -> Litestar:
     if config is None:
         config = Settings()
 
-    @asynccontextmanager
-    async def app_lifespan(app: FastAPI) -> AsyncGenerator[None, Any]:
-        app.state.config = config
-
+    async def on_startup(app: Litestar) -> None:
         if config.online_mode is False:
-            log.warning(
+            app.get_logger().warning(
                 "online_mode is set to false. This is insecure and it's recommended to"
                 " set it to true."
             )
-
-        engine = create_async_engine(config.get_database_url())
-        SessionLocal.configure(bind=engine)
-
-        async with engine.begin() as session:
-            await session.run_sync(models.Base.metadata.create_all)
 
         if config.textures_bucket and config.verify_aws_credentials:
             sts_client = boto3.client("sts")
             sts_client.get_caller_identity()
 
-        yield
+    @get("/", include_in_schema=False, exclude_from_auth=True)
+    async def index() -> Redirect:
+        return Redirect(github_url())
 
-    app = FastAPI(
-        title="Valhalla Skin Server",
-        version=".".join(valhalla.__version__.split(".")[:2]),
-        description=valhalla.__usage__,
-        license_info={
-            "name": "Licensed with Open Source",
-            "identifier": valhalla.__metadata__.get("License-Expression"),
-        },
-        lifespan=app_lifespan,
-    )
-
-    limit.setup(app)
-    auth.init_jwk(config)
-
-    @app.get("/")
-    async def index() -> RedirectResponse:
-        for url in valhalla.__metadata__.get_all("Project-URL", []):
-            name, url = str(url).split(", ")
-            if name.lower() == "repository":
-                return RedirectResponse(url, status.HTTP_308_PERMANENT_REDIRECT)
-
-        raise HTTPException(status.HTTP_404_NOT_FOUND)
-
-    if "HEROKU" in os.environ:
-        app.add_middleware(HTTPSRedirectMiddleware)
-
-    app.add_middleware(CORSMiddleware, allow_origins=["*"])
-    app.add_middleware(SessionMiddleware, secret_key=config.secret_key)
-
-    app.include_router(api.router, prefix="/api")
-
+    static_files = []
     if config.textures_bucket is None:
         os.makedirs(config.textures_path, exist_ok=True)
-        static_textures = StaticFiles(directory=config.textures_path)
-        app.mount("/textures", static_textures, name="textures")
+        static_files.append(
+            create_static_files_router(
+                path="/textures",
+                directories=[config.textures_path],
+                name="textures",
+            )
+        )
 
-    return app
+    stores: dict[str, Store] = {}
+    if config.redis_url is not None:
+        stores["rate_limit"] = ValkeyStore.with_client(config.redis_url)
+
+    sqlalchemy_config = SQLAlchemyAsyncConfig(
+        connection_string=config.get_database_url(),
+        metadata=Base.metadata,
+    )
+
+    jwt_auth = JWTCookieAuth[User](
+        token_secret=config.secret_key,
+        retrieve_user_handler=auth.user_from_token,
+        exclude=[
+            "^/docs",
+        ],
+    )
+
+    session_backend = CookieBackendConfig(
+        secret=hashlib.sha256(config.secret_key.encode()).digest()
+    )
+
+    auth_config = {}
+    if config.xbox_live_client_id and config.xbox_live_client_secret:
+        auth_config["xbox"] = OAuthConfig(
+            server_metadata_url=config.xbox_live_server_metadata_url,
+            client_id=config.xbox_live_client_id,
+            client_secret=config.xbox_live_client_secret,
+            client_kwargs=config.xbox_live_client_kwargs,
+            route_prefix="/api/v1",
+            retrieve_user_info=auth.login_with_xbox_userinfo,
+            tags=["Authentication"],
+        )
+
+    async def dependency_config(request: Request) -> Settings:
+        return request.state["config"]
+
+    return Litestar(
+        route_handlers=[
+            index,
+            *static_files,
+            api.router,
+        ],
+        openapi_config=OpenAPIConfig(
+            path="/docs",
+            title="Valhalla Skin Server",
+            version=".".join(valhalla.__version__.split(".")[:2]),
+            description=valhalla.__usage__,
+            license=License(
+                name="GNU Affero General Public License",
+                identifier="AGPL-3.0-only",
+                url=github_url("LICENSE"),
+            ),
+            render_plugins=[
+                ScalarRenderPlugin(options={"agent": {"disabled": True}}),
+                RapidocRenderPlugin(),
+                RedocRenderPlugin(version="v2.4.0"),
+                StoplightRenderPlugin(),
+                SwaggerRenderPlugin(),
+            ],
+        ),
+        compression_config=CompressionConfig("gzip"),
+        cors_config=CORSConfig(allow_origins=["*"]),
+        middleware=[
+            session_backend.middleware,
+            jwt_auth.middleware,
+        ],
+        state=State(
+            {
+                "config": config,
+                "jwt": jwt_auth,
+            }
+        ),
+        stores=stores,
+        plugins=[
+            PydanticPlugin(prefer_alias=True),
+            SQLAlchemyPlugin(sqlalchemy_config),
+            OAuthPlugin(auth_config),
+        ],
+        on_startup=[
+            on_startup,
+        ],
+    )

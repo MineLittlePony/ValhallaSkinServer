@@ -1,7 +1,5 @@
-from fastapi import APIRouter
+from litestar import Router
 
 from . import v0, v1
 
-router = APIRouter()
-router.include_router(v1.router, prefix="/v1")
-router.include_router(v0.router)
+router = Router("/api", route_handlers=[v1.router, v0.router])

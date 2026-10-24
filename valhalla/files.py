@@ -1,14 +1,11 @@
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated
 
-from fastapi import Depends
+from valhalla.config import Settings
 
-from .config import Config
 from .s3path import S3Path
 
 
-def get_target_path(config: Config) -> Path | S3Path:
+def get_save_path(config: Settings) -> Path | S3Path:
     bucket = config.textures_bucket
     if bucket is None:
         # bucket not set, use local files for storage
@@ -25,13 +22,8 @@ def get_target_path(config: Config) -> Path | S3Path:
     )
 
 
-@dataclass
-class Files:
-    save_path: Annotated[Path | S3Path, Depends(get_target_path)]
-
-    def put_file(self, skin_hash: str, data: bytes) -> None:
-        """Save a texture to the file system"""
-
-        file = self.save_path / skin_hash
-        if not file.exists():
-            file.write_bytes(data)
+def put_file(save_path: Path | S3Path, skin_hash: str, data: bytes) -> None:
+    """Save a texture to the file system"""
+    file = save_path / skin_hash
+    if not file.exists():
+        file.write_bytes(data)

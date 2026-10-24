@@ -1,9 +1,9 @@
 import secrets
-from typing import Annotated, Literal
-from urllib.parse import urlparse
+from typing import Literal
+from urllib.parse import urljoin, urlparse
 
-from fastapi import Depends, Request
-from pydantic import AnyHttpUrl, BaseModel, Field
+from litestar import Request
+from pydantic import AnyHttpUrl, BaseModel, Field, field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -44,6 +44,13 @@ class OtelConfig(BaseModel):
     )
 
 
+def _generate_secret() -> str:
+    secret = secrets.token_urlsafe(24)
+    with open(".env", "a") as f:
+        f.write(f"SECRET_KEY={secret!r}\n")
+    return secret
+
+
 class Settings(BaseSettings):
     """Configuration for the skin server.
 
@@ -69,12 +76,14 @@ WARNING:
     )
 
     secret_key: str = Field(
-        default="dev",
+        default_factory=_generate_secret,
         description="""
 The secret key used to sign the session data.
 
-It's important to change this from the default. Use the following command to create a
-new secret key.
+If omitted, it will generate a new secret using the `secrets` module, then save
+it as a value in the file `.env`.
+
+Use the following command to create a new secret key.
 
 $ openssl rand -base64 24
         """,
@@ -146,13 +155,14 @@ If empty, will assume same origin.
     def get_database_url(self) -> str:
         return resolve_db(self.database_url)
 
-    def get_textures_url(self) -> str | None:
-        if self.textures_url is None:
+    @field_validator("textures_url")
+    @classmethod
+    def _get_textures_url(cls, textures_url: AnyHttpUrl | None) -> AnyHttpUrl | None:
+        if textures_url is None:
             return None
-        url = str(self.textures_url)
-        if url and not url.endswith("/"):
-            url += "/"
-        return url
+        if textures_url.path is None or textures_url.path.endswith("/"):
+            return textures_url
+        return AnyHttpUrl(str(textures_url) + "/")
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -176,9 +186,10 @@ If empty, will assume same origin.
             TomlConfigSettingsSource(settings_cls),
         )
 
+    def get_textures_url(self, request: Request) -> str:
+        if self.textures_url is None:
+            return urljoin(str(request.base_url), "textures/")
+        return str(self.textures_url)
 
-def get_config(request: Request) -> Settings:
-    return request.app.state["config"]
 
-
-type Config = Annotated[Settings, Depends(get_config)]
+Config = Settings

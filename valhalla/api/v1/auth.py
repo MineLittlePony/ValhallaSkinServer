@@ -1,67 +1,77 @@
 import hashlib
+import json
 import secrets
 import uuid
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
 from datetime import timedelta
-from typing import Annotated
+from typing import TypedDict
 
-from authlib.integrations.starlette_client import OAuth, OAuthError, StarletteOAuth2App
-from expiringdict import ExpiringDict
-from fastapi import APIRouter, Depends, FastAPI, Form, HTTPException, Request, Response
-from fastapi.responses import RedirectResponse
+from litestar import Request, Router, get, post, status_codes
+from litestar.di import NamedDependency, Provide
+from litestar.exceptions import PermissionDeniedException
+from litestar.params import URLEncodedBody
+from litestar.response import Redirect
 
-from ... import auth, mojang, xbox
-from ...config import Config
-from ...crud import CRUD
-from ...schemas import LoginMinecraftHandshakeResponse, LoginResponse
+from valhalla import auth, mojang
+from valhalla.config import Settings
+from valhalla.crud import CRUD
+from valhalla.schemas import LoginMinecraftHandshakeResponse, LoginResponse
 
-xboxlive: StarletteOAuth2App
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
-    global xboxlive
-    config: Config = app.state["config"]
-    xboxlive = OAuth().register(
-        "xboxlive",
-        client_id=config.xbox_live_client_id,
-        client_secret=config.xbox_live_client_secret,
-        server_metadata_url=config.xbox_live_server_metadata_url,
-        client_kwargs=config.xbox_live_client_kwargs,
-    )
-    yield
+STORE_NAME = "auth-tokens"
 
 
-router = APIRouter(tags=["Authentication"], lifespan=lifespan)
-
-
-# Validate tokens are kept 100 at a time for 30 seconds each
-validate_tokens: dict[int, tuple[str, str]] = ExpiringDict(100, 30)
-
-
-@router.get("/auth/logout", status_code=302)
-async def logout() -> RedirectResponse:
-    response = RedirectResponse("/", status_code=302)
+@get(
+    "/logout",
+    status_code=status_codes.HTTP_302_FOUND,
+    summary="Log out",
+    description="""
+Logs out of cookie based authentication.
+    """,
+)
+async def logout() -> Redirect:
+    response = Redirect("/", status_code=status_codes.HTTP_302_FOUND)
     response.delete_cookie("token")
     return response
 
 
-def get_client_ip(request: Request) -> str:
-    if not request.client:
-        raise HTTPException(400)
-    return request.headers.get("X-Forwarded-For", request.client.host)
+class LoginFormData(TypedDict):
+    name: str
 
 
-@router.post("/auth/minecraft")
+@post(
+    "/minecraft",
+    summary="Login for Minecraft",
+    description="""
+Start here when logging in via Minecraft.
+
+After calling this endpoint, send a POST request to Mojang's API with the
+`verifyToken` and `serverId`.
+
+After making the request to Mojang, call the endpoint
+`/api/v1/auth/minecraft/callback` with your `verifyToken`.
+    """,
+    exclude_from_auth=True,
+)
 async def minecraft_login(
-    settings: Config,
-    client: Annotated[str, Depends(get_client_ip)],
-    name: Annotated[str, Form()],
+    request: Request,
+    data: URLEncodedBody[LoginFormData],
 ) -> LoginMinecraftHandshakeResponse:
+    """Login for Minecraft
+
+    After calling this endpoint, send a POST request to Mojang's API with the
+    `verifyToken` and `serverId`.
+
+    After making the request to Mojang, call the endpoint
+    `/api/v1/auth/minecraft/callback` with your `verifyToken`.
+    """
+    settings: Settings = request.app.state.config
+    store = request.app.stores.get(STORE_NAME)
     # Generate a random 32 bit integer. It will be checked later.
     verify_token = secrets.randbits(32)
-    validate_tokens[verify_token] = name, client
+    await store.set(
+        str(verify_token),
+        json.dumps([data["name"], request.client]),
+        expires_in=timedelta(seconds=30),
+    )
 
     return LoginMinecraftHandshakeResponse(
         server_id=settings.server_id,
@@ -70,22 +80,45 @@ async def minecraft_login(
     )
 
 
-@router.post("/auth/minecraft/callback")
-async def minecraft_login_callback(
-    response: Response,
-    settings: Config,
-    client: Annotated[str, Depends(get_client_ip)],
-    name: Annotated[str, Form()],
-    verify_token: Annotated[int, Form(alias="verifyToken")],
-) -> LoginResponse:
-    if verify_token not in validate_tokens:
-        raise HTTPException(403)
+class CallbackFormData(TypedDict):
+    verifyToken: str
+    name: str
 
-    xname, addr = validate_tokens.pop(verify_token)
-    if xname != name:
-        raise HTTPException(403)
-    if addr != client:
-        raise HTTPException(403)
+
+@post(
+    "/minecraft/callback",
+    summary="Login Callback for Minecraft",
+    description="""
+This endpoint should be called after making a request to Mojang.
+    """,
+    dependencies={
+        "crud": Provide(CRUD, sync_to_thread=False),
+    },
+    exclude_from_auth=True,
+)
+async def minecraft_login_callback(
+    request: Request,
+    crud: NamedDependency[CRUD],
+    data: URLEncodedBody[CallbackFormData],
+) -> LoginResponse:
+    """Login Callback for Minecraft"""
+    settings: Settings = request.app.state.config
+    verify_token = data["verifyToken"]
+    name = data["name"]
+
+    store = request.app.stores.get(STORE_NAME)
+    value = await store.get(str(verify_token))
+    await store.delete(str(verify_token))
+    if value is None:
+        raise PermissionDeniedException
+
+    client = request.client
+    if client is not None:
+        client = list(client)
+
+    data = json.loads(value)
+    if data != [name, client]:
+        raise PermissionDeniedException
 
     if settings.online_mode:
         joined = await mojang.has_joined(
@@ -101,49 +134,22 @@ async def minecraft_login_callback(
         hash = hashlib.md5(offline_name, usedforsecurity=False).digest()
         uid = uuid.UUID(bytes=hash)
 
-    async with CRUD.create() as crud:
-        user = await crud.get_or_create_user(uid, name)
-        token = auth.token_from_user(user.id, expire_in=timedelta(hours=1))
-        auth_header = f"Bearer {token}"
+    user = await crud.get_or_create_user(uid, name)
+    token = auth.token_from_user(request, user)
+    auth_header = f"Bearer {token}"
 
-        response.headers["Authorization"] = token
-
-        return LoginResponse(
-            access_token=auth_header,
-            user_id=user.uuid,
-        )
+    return LoginResponse(
+        access_token=auth_header,
+        user_id=user.uuid,
+    )
 
 
-@router.api_route("/auth/xbox")
-async def xbox_login(request: Request) -> RedirectResponse:
-    callback = str(request.url_for("xbox_login_callback"))
-    callback = callback.replace("http://127.0.0.1", "http://localhost")
-    return await xboxlive.authorize_redirect(request, callback)
-
-
-@router.api_route("/auth/xbox/callback")
-async def xbox_login_callback(request: Request) -> RedirectResponse:
-    if not request.client:
-        raise HTTPException(400)
-    try:
-        token = await xboxlive.authorize_access_token(request)
-        profile = await xbox.login_with_xbox(token["access_token"])
-    except (OAuthError, xbox.XboxLoginError) as e:
-        raise HTTPException(403, str(e)) from None
-    else:
-        async with CRUD.create() as crud:
-            user = await crud.get_or_create_user(profile.id, profile.name)
-            expires = timedelta(days=365)
-            token = auth.token_from_user(user.id, expire_in=expires)
-
-            response = RedirectResponse("/docs")
-            response.set_cookie(
-                "token",
-                token,
-                secure=True,
-                httponly=True,
-                expires=int(expires.total_seconds()),
-            )
-
-            await crud.db.commit()
-            return response
+router = Router(
+    "/auth",
+    tags=["Authentication"],
+    route_handlers=[
+        logout,
+        minecraft_login,
+        minecraft_login_callback,
+    ],
+)

@@ -5,7 +5,7 @@ from typing import Annotated, Self
 from urllib.parse import urljoin
 from uuid import UUID
 
-from fastapi import File, Form, HTTPException, UploadFile, status
+from litestar.exceptions import ClientException
 from pydantic import AnyHttpUrl, ConfigDict, Field
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic.alias_generators import to_camel
@@ -149,16 +149,9 @@ class UserTextureHistory(BaseModel):
     )
 
 
-class TextureUpload(BaseModel):
-    type: str = Form()
-    file: UploadFile = File(media_type="image/png")
-    metadata: dict[str, str] | None = Form(None)
-
-
 def validate_texture_type(s: str) -> str:
     if ":" in s:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+        raise ClientException(
             detail="API v1 does not support namespaced texture types.",
         )
     return s

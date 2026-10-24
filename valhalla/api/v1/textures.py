@@ -1,36 +1,48 @@
 from collections.abc import AsyncGenerator, AsyncIterable
-from typing import Annotated, Any
+from typing import Any
 
 import anyio.to_thread
 import httpx2
 from anyio import TemporaryFile
-from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile
-from pydantic import BaseModel, Json
-from starlette import status
+from litestar import Request, Router, delete, get, post, put, status_codes
+from litestar.datastructures import UploadFile
+from litestar.di import NamedDependency, Provide
+from litestar.exceptions import ClientException, HTTPException
+from litestar.params import FromQuery, JSONBody, MultipartBody
+from pydantic import BaseModel, ConfigDict, Json
 
-from ... import image, models, schemas
-from ...auth import require_user_id
-from ...byteconv import mb
-from ...config import Config
-from ...crud import CRUD
-from ...files import Files
+from valhalla import image, schemas
+from valhalla.byteconv import mb
+from valhalla.config import Settings
+from valhalla.crud import CRUD
+from valhalla.files import get_save_path, put_file
+from valhalla.models import User
+
 from .user import get_user_textures
-from .utils import get_textures_url
-
-router = APIRouter(tags=["Texture Uploads"])
 
 max_upload_size = 5 * mb
 
 
-@router.get("/textures")
+class ContentTooLargeException(HTTPException):
+    status_code = status_codes.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+
+
+@get(
+    "/textures",
+    summary="Get own textures",
+    description="""
+Gets the logged in user's currently active textures.
+    """,
+    dependencies={
+        "crud": Provide(CRUD, sync_to_thread=False),
+    },
+)
 async def get_texture(
-    user_id: Annotated[int, Depends(require_user_id)],
-    textures_url: Annotated[str, Depends(get_textures_url)],
+    request: Request[User, Any, Any],
+    crud: NamedDependency[CRUD],
 ) -> dict[str, schemas.Texture]:
-    async with CRUD.create() as crud:
-        user = await crud.require_user(user_id)
-        user_texts = await get_user_textures(user, None, crud, textures_url)
-        return user_texts.textures
+    user_texts = await get_user_textures(request, request.user, None, crud)
+    return user_texts.textures
 
 
 async def download_file(url: str, max_size: int) -> bytes:
@@ -39,44 +51,37 @@ async def download_file(url: str, max_size: int) -> bytes:
             head_response = await http.head(url)
             head_response.raise_for_status()
         except httpx2.HTTPError as e:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+            raise ClientException(
                 detail=f"Error fetching file: {e}",
             ) from None
 
         file_size = head_response.headers.get("content-length")
         if not file_size:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+            raise ClientException(
                 detail="file Content-Length is missing",
             )
         if file_size and int(file_size) > max_size:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
+            raise ClientException(
                 detail="file Content-Length is too big",
             )
 
         async with http.stream("GET", url) as resp:
             file_size = int(resp.headers["content-length"])
-            return await read_upload(resp.aiter_bytes(), file_size)
+            if file_size > max_upload_size:
+                raise ContentTooLargeException
+            return await read_upload(resp.aiter_bytes())
 
 
-async def read_upload(file: AsyncIterable[bytes], file_size: int) -> bytes:
+async def read_upload(file: AsyncIterable[bytes]) -> bytes:
     real_file_size = 0
     async with TemporaryFile() as temp:
         async for chunk in file:
             real_file_size += len(chunk)
-            if real_file_size > file_size:
-                raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE)
+            if real_file_size > max_upload_size:
+                raise ContentTooLargeException
             await temp.write(chunk)
         await temp.seek(0)
         return await temp.read()
-
-
-async def valid_content_length(
-    content_length: Annotated[int, Header(le=max_upload_size)],
-) -> int:
-    return content_length
 
 
 async def iter_upload_file(file: UploadFile) -> AsyncGenerator[bytes, Any]:
@@ -84,97 +89,109 @@ async def iter_upload_file(file: UploadFile) -> AsyncGenerator[bytes, Any]:
         yield chunk
 
 
-@router.post("/textures")
+@post(
+    "/textures",
+    summary="Set a texture from a URL",
+    description="""
+Sets the logged in user's active texture by downloading a URL.
+
+Upload sizes are limited to 5MB.
+    """,
+    dependencies={
+        "crud": Provide(CRUD, sync_to_thread=False),
+    },
+    status_code=status_codes.HTTP_204_NO_CONTENT,
+    raises=[ContentTooLargeException],
+)
 async def post_texture(
-    config: Config,
-    files: Annotated[Files, Depends()],
-    user_id: Annotated[int, Depends(require_user_id)],
-    body: schemas.TexturePost,
+    request: Request[User, Any, Any],
+    crud: NamedDependency[CRUD],
+    data: JSONBody[schemas.TexturePost],
 ) -> None:
-    async with CRUD.create() as crud:
-        user = await crud.require_user(user_id)
-        await post_texture_internal(config, files, user, crud, body)
-
-
-async def post_texture_internal(
-    config: Config,
-    files: Files,
-    user: models.User,
-    crud: CRUD,
-    body: schemas.TexturePost,
-) -> None:
-    file = await download_file(str(body.file), max_upload_size)
-    await upload_file(config, user, body.type, file, body.meta, crud, files)
+    file = await download_file(str(data.file), max_upload_size)
+    await upload_file(request, data.type, file, data.meta, crud)
     await crud.db.commit()
 
 
-@router.put("/textures")
+class TexturesPut(BaseModel):
+    file: UploadFile
+    type: schemas.TextureType = "skin"
+    meta: Json[dict[str, str]] | None = None
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
+@put(
+    "/textures",
+    summary="Upload a texture",
+    description="""
+Sets the logged in user's active textures by uploading an image.
+
+Upload sizes are limited to 5MB.
+    """,
+    dependencies={
+        "crud": Provide(CRUD, sync_to_thread=False),
+    },
+    status_code=status_codes.HTTP_204_NO_CONTENT,
+    raises=[ContentTooLargeException],
+)
 async def put_texture(
-    config: Config,
-    files: Annotated[Files, Depends()],
-    user_id: Annotated[int, Depends(require_user_id)],
-    file: Annotated[UploadFile, File()],
-    file_size: Annotated[int, Depends(valid_content_length)],
-    type: Annotated[schemas.TextureType, Form()] = "skin",
-    meta: Annotated[Json[dict[str, str]] | None, Form()] = None,
+    request: Request[User, Any, Any],
+    crud: NamedDependency[CRUD],
+    data: MultipartBody[TexturesPut],
 ) -> None:
-    async with CRUD.create() as crud:
-        user = await crud.require_user(user_id)
-        await put_texture_internal(
-            config, files, user, crud, file, file_size, type, meta
-        )
+    if "content-length" in data.file.headers:
+        max_len = int(data.file.headers["content-length"])
+        if max_len > max_upload_size:
+            raise ContentTooLargeException
 
-
-async def put_texture_internal(
-    config: Config,
-    files: Files,
-    user: models.User,
-    crud: CRUD,
-    file: UploadFile,
-    file_size: int,
-    type: schemas.TextureType,
-    meta: dict[str, str] | None,
-) -> None:
-
-    body = await read_upload(iter_upload_file(file), file_size)
-    await upload_file(config, user, type, body, meta, crud, files)
+    body = await read_upload(iter_upload_file(data.file))
+    await upload_file(request, data.type, body, data.meta, crud)
     await crud.db.commit()
+
+
+def upload_to_file_store(config: Settings, hash: str, file: bytes) -> None:
+    save_path = get_save_path(config)
+    put_file(save_path, hash, file)
 
 
 async def upload_file(
-    settings: Config,
-    user: models.User,
+    request: Request[User, Any, Any],
     texture_type: str,
     file: bytes,
     meta: dict[str, str] | None,
     crud: CRUD,
-    files: Files,
 ) -> None:
+    settings: Settings = request.app.state.config
     if texture_type in settings.texture_type_denylist:
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST, "That texture type is not allowed"
-        )
+        raise ClientException(detail="That texture type is not allowed")
     texture_hash = await anyio.to_thread.run_sync(image.gen_skin_hash, file)
     upload = await crud.get_upload(texture_hash)
     if not upload:
-        await anyio.to_thread.run_sync(files.put_file, texture_hash, file)
-        upload = await crud.put_upload(user, texture_hash)
+        await anyio.to_thread.run_sync(
+            upload_to_file_store, settings, texture_hash, file
+        )
+        upload = await crud.put_upload(request.user, texture_hash)
 
-    await crud.put_texture(user, texture_type, upload, meta or {})
+    await crud.put_texture(request.user, texture_type, upload, meta or {})
 
 
-@router.delete("/textures")
+@delete(
+    "/textures",
+    summary="Delete a texture (query)",
+    description="""
+Deactivates one of the logged in user's active textures.
+    """,
+    dependencies={
+        "crud": Provide(CRUD, sync_to_thread=False),
+    },
+)
 async def delete_texture(
-    user_id: Annotated[int, Depends(require_user_id)],
-    type: schemas.TextureType,
+    request: Request[User, Any, Any],
+    crud: NamedDependency[CRUD],
+    type: FromQuery[schemas.TextureType],
 ) -> None:
-    async with CRUD.create() as crud:
-        user = await crud.require_user(user_id)
-        await delete_texture_internal(user, crud, type)
-
-
-async def delete_texture_internal(user: models.User, crud: CRUD, type: str) -> None:
-    await crud.put_texture(user, type, None)
+    await crud.put_texture(request.user, type, None)
     await crud.db.commit()
 
 
@@ -183,9 +200,35 @@ class DeleteTexture(BaseModel):
 
 
 # deprecated, delete shouldn't have a body, and it's missing a s
-@router.delete("/texture", deprecated=True)
+@delete(
+    "/texture",
+    summary="Delete a texture (formdata)",
+    description="""
+Deactivates one of the logged in user's active textures.
+
+This endpoint does not follow REST standards, as it accepts a body in a DELETE method.
+Please prefer to use the query version.
+    """,
+    dependencies=delete_texture.dependencies,
+    deprecated=True,
+)
 async def delete_texture_deprecated(
-    texture: DeleteTexture,
-    user_id: Annotated[int, Depends(require_user_id)],
+    request: Request[User, Any, Any],
+    crud: NamedDependency[CRUD],
+    data: JSONBody[DeleteTexture],
 ) -> None:
-    await delete_texture(user_id, texture.type)
+    await delete_texture.fn(request, crud, data.type)
+
+
+router = Router(
+    "",
+    tags=["Texture Uploads"],
+    security=[{"BearerToken": []}],
+    route_handlers=[
+        get_texture,
+        put_texture,
+        post_texture,
+        delete_texture,
+        delete_texture_deprecated,
+    ],
+)

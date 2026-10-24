@@ -1,39 +1,33 @@
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
+from typing import Any
+from uuid import uuid4
 
 import pytest
 from freezegun import freeze_time
-from joserfc.errors import ExpiredTokenError, InvalidClaimError
+from litestar import Litestar, Request
+from litestar.exceptions import NotAuthorizedException
+from litestar.security.jwt import JWTAuth
 
-from valhalla.auth import token_from_user, user_from_token
+from valhalla.auth import token_from_user
+from valhalla.models import User
 
 
 @pytest.mark.parametrize(
-    ("expire_in", "issued_at", "exc_type", "exc_match"),
+    "ff_time",
     [
-        pytest.param(
-            timedelta(hours=-1),
-            None,
-            ExpiredTokenError,
-            r"^expired_token: The token is expired$",
-            id="verify_exp",
-        ),
-        pytest.param(
-            timedelta(hours=1),
-            datetime(year=2026, month=10, day=6, tzinfo=UTC),
-            InvalidClaimError,
-            r"^invalid_claim: The token was issued in the future$",
-            id="verify_iss",
-        ),
+        pytest.param(timedelta(hours=2), id="verify_exp"),
+        pytest.param(timedelta(hours=-2), id="verify_iss"),
     ],
 )
-@freeze_time("2026-10-05")
-def test_auth_verify(
-    expire_in: timedelta,
-    issued_at: datetime | None,
-    exc_type: type[BaseException],
-    exc_match: str,
-) -> None:
-    token = token_from_user(user_id=1, expire_in=expire_in, issued_at=issued_at)
+def test_auth_verify(app: Litestar, ff_time: timedelta) -> None:
+    state: Any = {"litestar_app": app}
+    request = Request(state)
+    user = User(uuid=uuid4(), name="Name")
+    with freeze_time("2026-10-05") as ft:
+        tkn = token_from_user(request, user)
 
-    with pytest.raises(exc_type, match=exc_match):
-        user_from_token(token)
+        ft.tick(ff_time)
+
+        jwt: JWTAuth = app.state.jwt
+        with pytest.raises(NotAuthorizedException, match=r"^401: Invalid token$"):
+            jwt.token_cls.decode(tkn, jwt.token_secret, jwt.algorithm)

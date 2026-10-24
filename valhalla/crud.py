@@ -1,44 +1,24 @@
 from collections import defaultdict
-from collections.abc import AsyncGenerator, AsyncIterator, Iterable, Mapping, Sequence
-from contextlib import asynccontextmanager
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Self
 from uuid import UUID
 
-from fastapi import HTTPException, status
+from litestar.di import NamedDependency
 from sqlalchemy import between, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.functions import current_timestamp
 
 from . import models
-from .database import SessionLocal
 
 
 @dataclass
 class CRUD:
     db: AsyncSession
 
-    def __init__(self, session: AsyncSession) -> None:
-        self.db = session
-
-    @classmethod
-    @asynccontextmanager
-    async def create(cls) -> AsyncGenerator[Self]:
-        async with SessionLocal() as session:
-            yield cls(session)
-
-    async def get_user(self, user_id: int) -> models.User | None:
-        """Get a user by its internal id."""
-        return await self.db.get(models.User, user_id)
-
-    async def require_user(self, user_id: int) -> models.User:
-        user = await self.get_user(user_id)
-        if user is not None:
-            return user
-
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED)
+    def __init__(self, db_session: NamedDependency[AsyncSession]) -> None:
+        self.db = db_session
 
     async def get_user_by_name(self, name: str) -> models.User | None:
         """Get a user by its name."""
@@ -63,12 +43,6 @@ class CRUD:
             select(models.User).where(models.User.uuid.in_(uuids))
         )
         return result.all()
-
-    async def resolve_uuids(self, uuids: list[UUID]) -> AsyncIterator[models.User]:
-        for uid in uuids:
-            usr = await self.get_user_by_uuid(uid)
-            if usr:
-                yield usr
 
     async def get_user_textures(
         self,
