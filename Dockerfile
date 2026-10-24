@@ -12,7 +12,7 @@ ENV UV_NO_DEFAULT_GROUPS=1 \
     UV_LOCKED=1 \
     UV_NO_MANAGED_PYTHON=1
 
-COPY --from=ghcr.io/astral-sh/uv:0.13.2 /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.13.5 /uv /uvx /bin/
 
 COPY pyproject.toml uv.lock *.md LICENSE config.toml ./
 RUN uv sync --no-install-project
