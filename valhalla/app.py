@@ -78,6 +78,7 @@ def create_app(config: Settings | None = None) -> Litestar:
         retrieve_user_handler=auth.user_from_token,
         exclude=[
             "^/docs",
+            "^/textures",
         ],
     )
 
