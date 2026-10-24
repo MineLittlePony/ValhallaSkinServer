@@ -1694,6 +1694,7 @@ test = [
     { name = "pytest-cov" },
     { name = "pytest-httpx" },
     { name = "pytest-sugar" },
+    { name = "tomlkit" },
 ]
 
 [package.metadata]
@@ -1727,6 +1728,7 @@ test = [
     { name = "pytest-cov", specifier = ">=7.0.0" },
     { name = "pytest-httpx", specifier = ">=0.35.0" },
     { name = "pytest-sugar", specifier = ">=1.0.0" },
+    { name = "tomlkit", specifier = ">=0.15.1" },
 ]
 
 [[package]]
