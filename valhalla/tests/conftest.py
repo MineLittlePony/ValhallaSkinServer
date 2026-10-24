@@ -94,13 +94,18 @@ class TestUser:
         return {"authorization": self.access_token}
 
     async def login(self, client: AsyncTestClient) -> Self:
-        resp = await client.post("/api/v1/auth/minecraft", data={"name": self.name})
+        resp = await client.post(
+            "/api/v1/auth/minecraft",
+            data={"name": self.name},
+            files={"": ""},
+        )
         assert resp.is_success, f"handshake failed: {resp.content!r}"
         data = resp.json()
 
         callback_resp = await client.post(
             "/api/v1/auth/minecraft/callback",
             data={"name": self.name, "verifyToken": data["verifyToken"]},
+            files={"": ""},
         )
         assert callback_resp.is_success, f"callback failed: {callback_resp.content!r}"
         token = callback_resp.json()
