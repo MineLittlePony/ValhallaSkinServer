@@ -30,6 +30,7 @@ from . import api, auth
 from .auth import OAuthConfig, OAuthPlugin
 from .config import Settings
 from .github import github_url
+from .middleware.https_redirect import HttpsRedirectMiddleware
 from .models import Base, User
 
 
@@ -126,6 +127,7 @@ def create_app(config: Settings | None = None) -> Litestar:
         compression_config=CompressionConfig("gzip"),
         cors_config=CORSConfig(allow_origins=["*"]),
         middleware=[
+            HttpsRedirectMiddleware(),
             session_backend.middleware,
             jwt_auth.middleware,
         ],
