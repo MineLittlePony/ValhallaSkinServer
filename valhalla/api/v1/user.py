@@ -14,7 +14,13 @@ from valhalla.crud import CRUD
 
 @get(
     "/user/{user_id:uuid}",
-    summary="Request user textures by UUID",
+    summary="Get user textures by UUID",
+    description="""
+Retrieve the textures for a single user, looking them up by their UUID.
+
+This endpoint has a rate limit of 60/minute. For requesting many user textures at once,
+use the **Get multiple user textures** (`/api/v1/bulk_textures`) endpoint.
+    """,
     middleware=[RateLimitConfig(("minute", 60)).middleware],
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
@@ -27,13 +33,7 @@ async def get_user_textures_by_uuid(
     user_id: FromPath[UUID],
     at: FromQuery[datetime | None] = None,
 ) -> schemas.UserTextures:
-    """Get the currently logged in user information.
-
-    This endpoint has a request limit of 60 per minute. For requesting
-    multiple users at once, use the [`/api/v1/bulk_textures`][bt] endpoint.
-
-    [bt]: #/User%20information/bulk_request_textures_api_v1_bulk_textures_post
-    """
+    """Get the currently logged in user information."""
     user = await crud.get_user_by_uuid(user_id)
 
     if user is None:
@@ -44,7 +44,14 @@ async def get_user_textures_by_uuid(
 
 @get(
     "/user/lookup/name/{name:str}",
-    summary="Request user textures by name",
+    summary="Get user textures by name",
+    description="""
+Look up a user by name, then return their active textures.
+
+This acts as a convenience endpoint so you don't have to resolve a user's uuid before
+fetching the textures.
+
+    """,
     middleware=[RateLimitConfig(("minute", 20)).middleware],
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),

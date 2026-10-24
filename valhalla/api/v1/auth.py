@@ -5,7 +5,7 @@ import uuid
 from datetime import timedelta
 from typing import TypedDict
 
-from litestar import Request, Router, get, post
+from litestar import Request, Router, get, post, status_codes
 from litestar.di import NamedDependency, Provide
 from litestar.exceptions import PermissionDeniedException
 from litestar.params import URLEncodedBody
@@ -19,9 +19,16 @@ from valhalla.schemas import LoginMinecraftHandshakeResponse, LoginResponse
 STORE_NAME = "auth-tokens"
 
 
-@get("/logout")
+@get(
+    "/logout",
+    status_code=status_codes.HTTP_302_FOUND,
+    summary="Log out",
+    description="""
+Logs out of cookie based authentication.
+    """,
+)
 async def logout() -> Redirect:
-    response = Redirect("/", status_code=302)
+    response = Redirect("/", status_code=status_codes.HTTP_302_FOUND)
     response.delete_cookie("token")
     return response
 
@@ -33,7 +40,16 @@ class LoginFormData(TypedDict):
 @post(
     "/minecraft",
     summary="Login for Minecraft",
-    status_code=200,
+    description="""
+Start here when logging in via Minecraft.
+
+After calling this endpoint, send a POST request to Mojang's API with the
+`verifyToken` and `serverId`.
+
+After making the request to Mojang, call the endpoint
+`/api/v1/auth/minecraft/callback` with your `verifyToken`.
+    """,
+    status_code=status_codes.HTTP_200_OK,
     exclude_from_auth=True,
 )
 async def minecraft_login(
@@ -73,10 +89,13 @@ class CallbackFormData(TypedDict):
 @post(
     "/minecraft/callback",
     summary="Login Callback for Minecraft",
+    description="""
+This endpoint should be called after making a request to Mojang.
+    """,
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
     },
-    status_code=200,
+    status_code=status_codes.HTTP_302_FOUND,
     exclude_from_auth=True,
 )
 async def minecraft_login_callback(

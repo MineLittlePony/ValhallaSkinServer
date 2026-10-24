@@ -1,5 +1,5 @@
 from collections.abc import AsyncGenerator, AsyncIterable
-from typing import Annotated, Any
+from typing import Any
 
 import anyio.to_thread
 import httpx2
@@ -8,7 +8,7 @@ from litestar import Request, Router, delete, get, post, put, status_codes
 from litestar.datastructures import UploadFile
 from litestar.di import NamedDependency, Provide
 from litestar.exceptions import ClientException, HTTPException
-from litestar.params import FromQuery, HeaderParameter, JSONBody, MultipartBody
+from litestar.params import FromQuery, JSONBody, MultipartBody
 from pydantic import BaseModel, ConfigDict, Json
 
 from valhalla import image, schemas
@@ -22,15 +22,17 @@ from .user import get_user_textures
 
 max_upload_size = 5 * mb
 
-LimitContentLength = Annotated[
-    int,
-    HeaderParameter(name="content-length", le=max_upload_size, include_in_schema=False),
-]
+
+class ContentTooLargeException(HTTPException):
+    status_code = status_codes.HTTP_413_REQUEST_ENTITY_TOO_LARGE
 
 
 @get(
     "/textures",
     summary="Get own textures",
+    description="""
+Gets the logged in user's currently active textures.
+    """,
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
     },
@@ -65,18 +67,18 @@ async def download_file(url: str, max_size: int) -> bytes:
 
         async with http.stream("GET", url) as resp:
             file_size = int(resp.headers["content-length"])
-            return await read_upload(resp.aiter_bytes(), file_size)
+            if file_size > max_upload_size:
+                raise ContentTooLargeException
+            return await read_upload(resp.aiter_bytes())
 
 
-async def read_upload(file: AsyncIterable[bytes], file_size: int) -> bytes:
+async def read_upload(file: AsyncIterable[bytes]) -> bytes:
     real_file_size = 0
     async with TemporaryFile() as temp:
         async for chunk in file:
             real_file_size += len(chunk)
-            if real_file_size > file_size:
-                raise HTTPException(
-                    status_code=status_codes.HTTP_413_REQUEST_ENTITY_TOO_LARGE
-                )
+            if real_file_size > max_upload_size:
+                raise ContentTooLargeException
             await temp.write(chunk)
         await temp.seek(0)
         return await temp.read()
@@ -90,10 +92,15 @@ async def iter_upload_file(file: UploadFile) -> AsyncGenerator[bytes, Any]:
 @post(
     "/textures",
     summary="Set a texture from a URL",
-    status_code=204,
+    description="""
+Sets the logged in user's active texture by downloading a URL.
+
+Upload sizes are limited to 5MB.
+    """,
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
     },
+    raises=[ContentTooLargeException],
 )
 async def post_texture(
     request: Request[User, Any, Any],
@@ -116,18 +123,27 @@ class TexturesPut(BaseModel):
 @put(
     "/textures",
     summary="Upload a texture",
-    status_code=204,
+    description="""
+Sets the logged in user's active textures by uploading an image.
+
+Upload sizes are limited to 5MB.
+    """,
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
     },
+    raises=[ContentTooLargeException],
 )
 async def put_texture(
     request: Request[User, Any, Any],
     crud: NamedDependency[CRUD],
     data: MultipartBody[TexturesPut],
-    file_size: LimitContentLength,
 ) -> None:
-    body = await read_upload(iter_upload_file(data.file), file_size)
+    if "content-length" in data.file.headers:
+        max_len = int(data.file.headers["content-length"])
+        if max_len > max_upload_size:
+            raise ContentTooLargeException
+
+    body = await read_upload(iter_upload_file(data.file))
     await upload_file(request, data.type, body, data.meta, crud)
     await crud.db.commit()
 
@@ -161,7 +177,9 @@ async def upload_file(
 @delete(
     "/textures",
     summary="Delete a texture (query)",
-    status_code=204,
+    description="""
+Deactivates one of the logged in user's active textures.
+    """,
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
     },
@@ -183,6 +201,12 @@ class DeleteTexture(BaseModel):
 @delete(
     "/texture",
     summary="Delete a texture (formdata)",
+    description="""
+Deactivates one of the logged in user's active textures.
+
+This endpoint does not follow REST standards, as it accepts a body in a DELETE method.
+Please prefer to use the query version.
+    """,
     dependencies=delete_texture.dependencies,
     deprecated=True,
 )

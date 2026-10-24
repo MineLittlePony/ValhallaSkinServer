@@ -1,15 +1,16 @@
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
-from typing import Any, Protocol, cast, override
+from typing import Any, Protocol, TypedDict, cast, override
 from uuid import UUID
 
 from advanced_alchemy.config import SQLAlchemyAsyncConfig
 from advanced_alchemy.extensions.litestar import SQLAlchemyPlugin
 from authlib.oidc.core import UserInfo
-from litestar import Litestar, Request, Response, Router, get
+from litestar import Litestar, Request, Response, Router, get, status_codes
 from litestar.config.app import AppConfig
 from litestar.connection import ASGIConnection
 from litestar.exceptions import PermissionDeniedException
+from litestar.openapi import ResponseSpec
 from litestar.plugins import InitPlugin
 from litestar.security.jwt import JWTAuth, JWTCookieAuth, Token
 
@@ -71,6 +72,10 @@ class OAuthConfig[UserT: BaseUser = BaseUser]:
     tags: list[str] = field(default_factory=list)
 
 
+class AuthCallbackResponse(TypedDict):
+    token: str
+
+
 class OAuthPlugin[UserT: BaseUser = BaseUser](InitPlugin):
     def __init__(self, config: Mapping[str, OAuthConfig[UserT]]) -> None:
         self.config = config
@@ -110,8 +115,10 @@ class OAuthPlugin[UserT: BaseUser = BaseUser](InitPlugin):
 
         @get(
             config.login_url.format(name=name),
+            status_code=status_codes.HTTP_302_FOUND,
             name=f"authlib_{name}_login",
             summary=f"Login for {name.title()}",
+            description=f"Start the login flow for {name.title()}",
             tags=config.tags,
             opt=config.opt,
         )
@@ -123,8 +130,20 @@ class OAuthPlugin[UserT: BaseUser = BaseUser](InitPlugin):
             config.callback_url.format(name=name),
             name=f"authlib_{name}_callback",
             summary=f"Login Callback for {name.title()}",
+            description=f"""
+Called automatically by the {name.title()} OAuth flow.
+
+Response is subject to change.
+            """,
             tags=config.tags,
             opt=config.opt,
+            responses={
+                status_codes.HTTP_200_OK: ResponseSpec(
+                    data_container=AuthCallbackResponse,
+                    generate_examples=False,
+                    description="Request fulfilled, document follows",
+                )
+            },
         )
         async def login_callback(request: Request) -> Response:
             try:

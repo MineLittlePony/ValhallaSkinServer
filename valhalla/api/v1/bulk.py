@@ -13,7 +13,17 @@ from valhalla.schemas import BulkRequest, BulkResponse, UserTextures
 
 @post(
     "/bulk_textures",
-    summary="Request multiple user textures",
+    summary="Get multiple user textures",
+    description="""
+Call this endpoint to reduce load on the server when requesting many users.
+
+Requesting this endpoint with a single UUID is forbidden. All requests must contain at
+least 2 UUIDs.
+
+For a single UUID, see the **Get user textures by UUID** (`/api/v1/user/{user_id}`)
+endpoint.
+
+    """,
     status_code=status_codes.HTTP_200_OK,
     middleware=[RateLimitConfig(("minute", 10)).middleware],
     dependencies={

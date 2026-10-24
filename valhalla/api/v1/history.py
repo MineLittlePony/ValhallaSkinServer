@@ -1,12 +1,14 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import urljoin
 from uuid import UUID
 
-from litestar import Request, Router, get
+from litestar import Request, Router, get, status_codes
 from litestar.di import NamedDependency, Provide
 from litestar.exceptions import NotFoundException
+from litestar.openapi import ResponseSpec
 from litestar.params import FromPath, FromQuery
+from typing_extensions import TypedDict
 
 from valhalla import schemas
 from valhalla.config import Settings
@@ -16,6 +18,12 @@ from valhalla.models import User
 
 @get(
     summary="Get own texture history",
+    description="""
+Gets the current users texture history, sorted most recent first.
+
+By default, duplicate textures will be hidden. To show them, send the request
+with `?show_duplicates=true` in the query params.
+    """,
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
     },
@@ -42,10 +50,28 @@ async def get_current_user_texture_history(
 @get(
     "/{user_id:uuid}",
     summary="Get user's history by uuid",
+    description="""
+Gets a users texture history, sorted most recent first.
+
+By default, duplicate textures will be hidden. To show them, send the request
+with `?show_duplicates=true` in the query params.
+    """,
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
     },
     exclude_from_auth=True,
+    raises=[NotFoundException],
+    responses={
+        status_codes.HTTP_404_NOT_FOUND: ResponseSpec(
+            TypedDict[
+                {
+                    "status_code": Literal[404],
+                    "detail": Literal["User not found"],
+                }
+            ],
+            description="`user_id` does not match a user",
+        )
+    },
 )
 async def get_user_texture_history_by_uuid(
     *,

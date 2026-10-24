@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-from litestar import Request, Router, delete, post, put
+from litestar import Request, Router, delete, post, put, status_codes
 from litestar.connection import ASGIConnection
 from litestar.datastructures import UploadFile
 from litestar.di import NamedDependency
@@ -16,7 +16,6 @@ from valhalla.models import User
 from valhalla.schemas import BaseModel
 
 from . import auth, textures
-from .textures import LimitContentLength
 
 
 def check_user_id(
@@ -36,7 +35,7 @@ class PostFormData(BaseModel):
 
 @post(
     "/user/{user_id:uuid}/{skin_type:str}",
-    status_code=200,
+    status_code=status_codes.HTTP_200_OK,
     dependencies=textures.post_texture.dependencies,
     guards=[check_user_id],
     include_in_schema=False,
@@ -68,7 +67,9 @@ class PutFormData:
 
 @put(
     "/user/{user_id:uuid}/{skin_type:str}",
+    status_code=textures.put_texture.status_code,
     dependencies=textures.put_texture.dependencies,
+    raises=textures.put_texture.raises,
     guards=[check_user_id],
     include_in_schema=False,
 )
@@ -76,7 +77,6 @@ async def put_skin_old(
     request: Request[User, Any, Any],
     crud: NamedDependency[CRUD],
     skin_type: FromPath[str],
-    content_length: LimitContentLength,
     data: MultipartBody[PutFormData],
 ) -> None:
     """Upload a skin texture from a file
@@ -91,19 +91,14 @@ async def put_skin_old(
         type=skin_type,
         meta=meta,
     )
-    await textures.put_texture.fn(
-        request,
-        crud,
-        body,
-        content_length,
-    )
+    await textures.put_texture.fn(request, crud, body)
 
 
 @delete(
     "/user/{user_id:uuid}/{skin_type:str}",
     dependencies=textures.delete_texture.dependencies,
     guards=[check_user_id],
-    status_code=200,
+    status_code=status_codes.HTTP_200_OK,
     include_in_schema=False,
 )
 async def delete_skin_old(
