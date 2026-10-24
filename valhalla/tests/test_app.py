@@ -134,7 +134,7 @@ async def test_skin_metadata(client: AsyncTestClient, user: TestUser) -> None:
     assert resp.status_code == 204, resp.content
 
     resp = await client.get("/api/v1/textures", headers=user.auth_header)
-    assert resp.status_code == 200
+    assert resp.status_code == 200, resp.content
     assert resp.json()["skin"]["metadata"] == {"model": "slim"}
 
 

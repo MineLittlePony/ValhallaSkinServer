@@ -60,6 +60,7 @@ def app() -> Litestar:
 async def client(app: Litestar) -> AsyncGenerator[AsyncTestClient]:
     app.debug = True
     async with AsyncTestClient(app) as client, async_engine.begin() as conn:
+        client.headers["accept"] = "application/json"
         await conn.run_sync(Base.metadata.create_all)
         try:
             yield client

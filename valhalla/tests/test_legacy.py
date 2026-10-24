@@ -37,7 +37,7 @@ async def test_legacy_upload(
     resp = await client.request(
         method, f"/api/v1/user/{user.uuid}/skin", headers=user.auth_header, **kwargs
     )
-    assert resp.status_code == 200, resp.content
+    assert resp.status_code == 204, resp.content
 
 
 @pytest.mark.parametrize(
