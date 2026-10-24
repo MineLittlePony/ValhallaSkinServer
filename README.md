@@ -27,5 +27,5 @@ UVICORN_HTTP=zttp UVICORN_HTTP2=1 litestar run
 
 #### Using the `uvicorn` command
 ```sh
-$ uvicorn app:app --http=zttp --http2
+uvicorn app:app --http=zttp --http2
 ```
