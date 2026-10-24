@@ -8,7 +8,7 @@ from typing import TypedDict
 from litestar import Request, Router, get, post, status_codes
 from litestar.di import NamedDependency, Provide
 from litestar.exceptions import PermissionDeniedException
-from litestar.params import URLEncodedBody
+from litestar.params import MultipartBody
 from litestar.response import Redirect
 
 from valhalla import auth, mojang
@@ -53,7 +53,7 @@ After making the request to Mojang, call the endpoint
 )
 async def minecraft_login(
     request: Request,
-    data: URLEncodedBody[LoginFormData],
+    data: MultipartBody[LoginFormData],
 ) -> LoginMinecraftHandshakeResponse:
     """Login for Minecraft
 
@@ -99,7 +99,7 @@ This endpoint should be called after making a request to Mojang.
 async def minecraft_login_callback(
     request: Request,
     crud: NamedDependency[CRUD],
-    data: URLEncodedBody[CallbackFormData],
+    data: MultipartBody[CallbackFormData],
 ) -> LoginResponse:
     """Login Callback for Minecraft"""
     settings: Settings = request.app.state.config
