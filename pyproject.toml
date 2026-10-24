@@ -26,6 +26,8 @@ repository = "https://github.com/MineLittlePony/ValhallaSkinServer"
 [dependency-groups]
 dev = [
     "pre-commit>=4.1.0",
+    # TODO: Move to main dependencies once http2 becomes standard in uvicorn
+    "zttp>=0.0.34",
 ]
 lint = [
     "boto3-stubs[s3,sts]>=1.36.6",
