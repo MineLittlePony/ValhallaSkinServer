@@ -40,6 +40,11 @@
 # redis_url = "redis://<host>:<port>/n"
 # redis_url = ""
 
+# URL pointing to the configured Sentry endpoint
+#
+# sentry_dsn = "https://<userid>.ingest.us.sentry.io/<appid>"
+# sentry_dsn = ""
+
 # The S3 bucket to store uploaded textures in.
 #
 # textures_bucket = ""
@@ -72,11 +77,3 @@
 # aws_access_key_id = ""
 
 # aws_secret_access_key = ""
-
-[otel]
-# Configuration table for opentelemetry
-
-# service_name = "my-api"
-# service_name = ""
-# exporter_otlp_endpoint = "https://collector.example.com"
-# exporter_otlp_endpoint = ""

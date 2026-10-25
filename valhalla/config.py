@@ -3,7 +3,7 @@ from typing import Literal
 from urllib.parse import urljoin, urlparse
 
 from litestar import Request
-from pydantic import AnyHttpUrl, BaseModel, Field, field_validator
+from pydantic import AnyHttpUrl, Field, field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -31,17 +31,6 @@ def generate_server_id() -> str:
     s = secrets.token_urlsafe(20)
     s = s.replace("_", "")
     return s.replace("-", "")
-
-
-class OtelConfig(BaseModel):
-    service_name: str | None = Field(
-        default=None,
-        examples=["my-api"],
-    )
-    exporter_otlp_endpoint: AnyHttpUrl | None = Field(
-        default=None,
-        examples=["https://collector.example.com"],
-    )
 
 
 def _generate_secret() -> str:
@@ -98,6 +87,11 @@ $ openssl rand -base64 24
         description="URL pointing to a redis instance for the rate limiter",
         examples=["redis://<host>:<port>/n"],
     )
+    sentry_dsn: str | None = Field(
+        default=None,
+        description="URL pointing to the configured Sentry endpoint",
+        examples=["https://<userid>.ingest.us.sentry.io/<appid>"],
+    )
 
     # TODO this should be saved in the database
     server_id: str = Field(default_factory=generate_server_id, exclude=True)
@@ -146,11 +140,6 @@ If empty, will assume same origin.
     aws_access_key_id: str | None = None
     aws_secret_access_key: str | None = None
     verify_aws_credentials: bool = Field(default=True, exclude=True)
-
-    otel: OtelConfig | None = Field(
-        default=None,
-        description="Configuration table for opentelemetry",
-    )
 
     def get_database_url(self) -> str:
         return resolve_db(self.database_url)

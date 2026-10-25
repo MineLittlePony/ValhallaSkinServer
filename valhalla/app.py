@@ -2,6 +2,7 @@ import hashlib
 import os
 
 import boto3
+import sentry_sdk
 from advanced_alchemy.extensions.litestar import SQLAlchemyAsyncConfig, SQLAlchemyPlugin
 from litestar import Litestar, Request, get
 from litestar.config.compression import CompressionConfig
@@ -23,6 +24,7 @@ from litestar.security.jwt import JWTCookieAuth
 from litestar.static_files import create_static_files_router
 from litestar.stores.base import Store
 from litestar.stores.valkey import ValkeyStore
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 import valhalla
 
@@ -37,6 +39,13 @@ from .models import Base, User
 def create_app(config: Settings | None = None) -> Litestar:
     if config is None:
         config = Settings()
+    sentry_sdk.init(
+        dsn=config.sentry_dsn,
+        integrations=[LoggingIntegration(capture_sentry_logs=True)],
+        data_collection={
+            "user_info": True,
+        },
+    )
 
     async def on_startup(app: Litestar) -> None:
         if config.online_mode is False:
