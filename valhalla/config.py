@@ -3,7 +3,7 @@ from typing import Literal
 from urllib.parse import urljoin, urlparse
 
 from litestar import Request
-from pydantic import AnyHttpUrl, Field, field_validator
+from pydantic import AnyHttpUrl, AnyUrl, Field, field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -82,7 +82,7 @@ $ openssl rand -base64 24
         description="The url to the database. Supports sqlite and postgresql.",
         examples=["postgresql://user:pass@host:5432/dbname"],
     )
-    redis_url: str | None = Field(
+    redis_url: AnyUrl | None = Field(
         default=None,
         description="URL pointing to a redis instance for the rate limiter",
         examples=["redis://<host>:<port>/n"],

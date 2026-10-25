@@ -79,12 +79,16 @@ def create_app(config: Settings | None = None) -> Litestar:
         redis = ValkeyStore(
             Valkey(
                 connection_pool=ConnectionPool.from_url(
-                    config.redis_url, ssl_cert_reqs="none"
+                    str(config.redis_url),
+                    **(
+                        {"ssl_cert_reqs": "none"}
+                        if config.redis_url.scheme in ("rediss", "valkeys")
+                        else {}
+                    ),
                 )
             ),
             handle_client_shutdown=True,
         )
-        redis._valkey.get_connection_kwargs()["ssl_certs_req"] = None  # noqa: SLF001
         stores["rate_limit"] = redis.with_namespace("rate_limit")
         stores["response_cache"] = redis.with_namespace("response_cache")
 
