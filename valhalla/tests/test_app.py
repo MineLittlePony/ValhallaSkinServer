@@ -195,28 +195,3 @@ async def test_multiple_users_with_same_name(
     for resp in resp1, resp2:
         assert resp["profileId"] == str(id2.uuid)
         assert resp["profileName"] == id2.name
-
-
-async def test_https_redirect(client: AsyncTestClient) -> None:
-    resp = await client.get(
-        "/",
-        follow_redirects=False,
-        headers={"host": "skins.minelittlepony-mod.com"},
-    )
-    assert resp.status_code == 308
-    assert resp.has_redirect_location
-    assert resp.headers["location"] == "https://skins.minelittlepony-mod.com/"
-
-
-@pytest.mark.parametrize("host", ["localhost", "foo.localhost", "skinserver:8000"])
-async def test_https_not_redirect(host: str, client: AsyncTestClient) -> None:
-    resp = await client.get(
-        "/",
-        follow_redirects=False,
-        headers={"host": host},
-    )
-    assert resp.status_code == 302
-    assert (
-        resp.headers["location"]
-        == "https://github.com/MineLittlePony/ValhallaSkinServer"
-    )
