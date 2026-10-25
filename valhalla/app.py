@@ -76,7 +76,6 @@ def create_app(config: Settings | None = None) -> Litestar:
     stores: dict[str, Store] = {}
     if config.redis_url is not None:
         redis = ValkeyStore.with_client(config.redis_url)
-        redis._valkey.get_connection_kwargs()["ssl_certs_req"] = None  # noqa: SLF001
         stores["rate_limit"] = redis.with_namespace("rate_limit")
         stores["response_cache"] = redis.with_namespace("response_cache")
 
