@@ -118,6 +118,7 @@ indent-width = 4
 
 [tool.ty.rules]
 experimental-syntax = "ignore"
+missing-override-decorator = "warn"
 
 [tool.uv]
 default-groups = "all"

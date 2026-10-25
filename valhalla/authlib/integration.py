@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 class LitestarIntegration(FrameworkIntegration):
     expires_in = 3600
 
+    @override
     async def _get_cache_data(self, key: Hashable) -> dict[str, Any] | None:
         if self.cache is None:
             return None
@@ -23,6 +24,7 @@ class LitestarIntegration(FrameworkIntegration):
         except TypeError, ValueError:
             return None
 
+    @override
     async def get_state_data(
         self, session: dict[str, Any] | None, state: str | None
     ) -> dict[str, Any] | None:
@@ -42,6 +44,7 @@ class LitestarIntegration(FrameworkIntegration):
             return value.get("data")
         return None
 
+    @override
     async def set_state_data(
         self,
         session: dict[str, dict[str, object]] | None,
@@ -58,6 +61,7 @@ class LitestarIntegration(FrameworkIntegration):
                     session.pop(old_key)
             session[key] = {"data": data, "exp": now + self.expires_in}
 
+    @override
     def _clear_session_state(self, session: dict[str, Any]) -> None:
         now = time.time()
         prefix = f"_state_{self.name}"
@@ -68,6 +72,7 @@ class LitestarIntegration(FrameworkIntegration):
                 if not exp or exp < now:
                     session.pop(key)
 
+    @override
     async def clear_state_data(
         self, session: dict[str, Any] | None, state: str | None
     ) -> None:
@@ -76,6 +81,7 @@ class LitestarIntegration(FrameworkIntegration):
             session.pop(key, None)
             self._clear_session_state(session)
 
+    @override
     def update_token(
         self,
         token: str,

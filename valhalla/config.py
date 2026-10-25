@@ -1,5 +1,5 @@
 import secrets
-from typing import Literal
+from typing import Literal, override
 from urllib.parse import urljoin, urlparse
 
 from litestar import Request
@@ -159,6 +159,7 @@ If empty, will assume same origin.
     )
 
     @classmethod
+    @override
     def settings_customise_sources(
         cls,
         settings_cls: type[BaseSettings],

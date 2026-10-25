@@ -237,6 +237,7 @@ class S3Path(WritablePath, ReadablePath):
     def __repr__(self) -> str:
         return f"S3Path({self.uri!r})"
 
+    @override
     def __eq__(self, other: object) -> bool:
         return (
             isinstance(other, S3Path)
@@ -246,6 +247,7 @@ class S3Path(WritablePath, ReadablePath):
 
     if TYPE_CHECKING:
 
+        @override
         def __truediv__(self, key: Self | str) -> Self: ...
 
 
@@ -254,6 +256,7 @@ class FileWriter(BytesIO):
         super().__init__()
         self.callback = close_callback
 
+    @override
     def close(self) -> None:
         if self.closed:  # pragma: no cover
             raise ValueError("stream was already closed")

@@ -1,3 +1,5 @@
+from typing import override
+
 from litestar import status_codes
 from litestar.datastructures import URL
 from litestar.middleware import ASGIMiddleware
@@ -11,6 +13,7 @@ class HttpsRedirectMiddleware(ASGIMiddleware):
     Excludes requests that come from localhost.
     """
 
+    @override
     async def handle(
         self, scope: Scope, receive: Receive, send: Send, next_app: ASGIApp
     ) -> None:
