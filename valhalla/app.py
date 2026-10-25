@@ -1,5 +1,6 @@
 import hashlib
 import os
+from typing import Any
 
 import boto3
 import sentry_sdk
@@ -7,7 +8,7 @@ from advanced_alchemy.extensions.litestar import SQLAlchemyAsyncConfig, SQLAlche
 from litestar import Litestar, Request, get
 from litestar.config.compression import CompressionConfig
 from litestar.config.cors import CORSConfig
-from litestar.datastructures import State
+from litestar.datastructures import Headers, State
 from litestar.middleware.session.client_side import CookieBackendConfig
 from litestar.openapi import OpenAPIConfig
 from litestar.openapi.plugins import (
@@ -62,6 +63,23 @@ def create_app(config: Settings | None = None) -> Litestar:
     @get("/", include_in_schema=False, exclude_from_auth=True)
     async def index() -> Redirect:
         return Redirect(github_url())
+
+    @get("/__debug__", exclude_from_auth=True, include_in_schema=False)
+    async def debug(request: Request) -> dict[str, Any]:
+        return {
+            "type": request.scope["type"],
+            "asgi": request.scope["asgi"],
+            "http_version": request.scope["http_version"],
+            "server": request.scope["server"],
+            "client": request.scope["client"],
+            "scheme": request.scope["scheme"],
+            "root_path": request.scope["root_path"],
+            "headers": Headers.from_scope(request.scope).to_dict(),
+            "method": request.scope["method"],
+            "path": request.scope["path"],
+            "path_params": request.scope["path_params"],
+            "path_template": request.scope["path_template"],
+        }
 
     static_files = []
     if config.textures_bucket is None:
@@ -128,6 +146,7 @@ def create_app(config: Settings | None = None) -> Litestar:
     return Litestar(
         route_handlers=[
             index,
+            debug,
             *static_files,
             api.router,
         ],
