@@ -25,6 +25,7 @@ use the **Get multiple user textures** (`/api/v1/bulk_textures`) endpoint.
     dependencies={
         "crud": Provide(CRUD, sync_to_thread=False),
     },
+    cache=True,
     exclude_from_auth=True,
 )
 async def get_user_textures_by_uuid(

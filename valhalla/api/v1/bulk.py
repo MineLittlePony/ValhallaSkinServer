@@ -30,6 +30,7 @@ endpoint.
         "crud": Provide(CRUD, sync_to_thread=False),
     },
     exclude_from_auth=True,
+    cache=True,
 )
 async def bulk_request_textures(
     request: Request[User, Any, Any],

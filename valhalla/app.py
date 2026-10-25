@@ -66,7 +66,9 @@ def create_app(config: Settings | None = None) -> Litestar:
 
     stores: dict[str, Store] = {}
     if config.redis_url is not None:
-        stores["rate_limit"] = ValkeyStore.with_client(config.redis_url)
+        redis = ValkeyStore.with_client(config.redis_url)
+        stores["rate_limit"] = redis.with_namespace("rate_limit")
+        stores["response_cache"] = redis.with_namespace("response_cache")
 
     sqlalchemy_config = SQLAlchemyAsyncConfig(
         connection_string=config.get_database_url(),

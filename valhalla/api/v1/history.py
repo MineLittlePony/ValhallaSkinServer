@@ -72,6 +72,7 @@ with `?show_duplicates=true` in the query params.
             description="`user_id` does not match a user",
         )
     },
+    cache=True,
 )
 async def get_user_texture_history_by_uuid(
     *,
