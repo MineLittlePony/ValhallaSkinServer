@@ -79,7 +79,7 @@ def create_app(config: Settings | None = None) -> Litestar:
         redis = ValkeyStore(
             Valkey(
                 connection_pool=ConnectionPool.from_url(
-                    config.redis_url, ssl_cert_req="none"
+                    config.redis_url, ssl_cert_reqs="none"
                 )
             ),
             handle_client_shutdown=True,
