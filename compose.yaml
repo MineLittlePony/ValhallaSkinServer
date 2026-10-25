@@ -20,6 +20,11 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql
 
+  valkey:
+    image: valkey/valkey
+    ports:
+      - 6379:6379
+
   minio:
     image: pgsty/minio
     command: server /data --console-address :9001
@@ -35,6 +40,7 @@ services:
     env_file: .env
     environment:
       - DATABASE_URL=postgresql+psycopg://postgres:database@postgres:5432/valhalla
+      - REDIS_URL=valkey://valkey:6379/0
       - AWS_ENDPOINT_URL=http://localhost:9000
       - AWS_ACCESS_KEY_ID=minioadmin
       - AWS_SECRET_ACCESS_KEY=minioadmin
