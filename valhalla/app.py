@@ -25,6 +25,7 @@ from litestar.static_files import create_static_files_router
 from litestar.stores.base import Store
 from litestar.stores.valkey import ValkeyStore
 from sentry_sdk.integrations.logging import LoggingIntegration
+from valkey.asyncio import ConnectionPool, Valkey
 
 import valhalla
 
@@ -75,7 +76,15 @@ def create_app(config: Settings | None = None) -> Litestar:
 
     stores: dict[str, Store] = {}
     if config.redis_url is not None:
-        redis = ValkeyStore.with_client(config.redis_url)
+        redis = ValkeyStore(
+            Valkey(
+                connection_pool=ConnectionPool.from_url(
+                    config.redis_url, ssl_cert_req="none"
+                )
+            ),
+            handle_client_shutdown=True,
+        )
+        redis._valkey.get_connection_kwargs()["ssl_certs_req"] = None  # noqa: SLF001
         stores["rate_limit"] = redis.with_namespace("rate_limit")
         stores["response_cache"] = redis.with_namespace("response_cache")
 
