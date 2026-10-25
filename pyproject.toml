@@ -37,6 +37,7 @@ lint = [
     "ty>=0.0.64",
 ]
 test = [
+    "covdefaults>=2.3.0",
     "freezegun>=1.5.5",
     "moto[s3,sts]>=5.0.27",
     "pytest>=8.3.4",
@@ -53,20 +54,13 @@ build-backend = "uv_build"
 [tool.coverage]
 [tool.coverage.report]
 fail_under = 80
-exclude_lines = [
-    "pragma: no cover",
-    "def __repr__",
-    "if TYPE_CHECKING:",
-    "@overload",
-    "class .*Protocol",
-]
-skip_covered = true
-skip_empty = true
 
 [tool.coverage.run]
-branch = true
-omit = [
-    ".vscode*",
+plugins = [
+    "covdefaults",
+]
+source = [
+    "valhalla",
 ]
 
 [tool.pytest]

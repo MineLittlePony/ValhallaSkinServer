@@ -13,7 +13,6 @@ import pytest
 from litestar import Litestar
 from litestar.testing import AsyncTestClient
 from pydantic_settings import SettingsConfigDict
-from pytest_httpx import HTTPXMock
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from valhalla.app import create_app
@@ -76,21 +75,18 @@ def anyio_backend() -> Literal["asyncio"]:
 class TestUser:
     __test__ = False
 
-    def __init__(self, name: str, uuid: UUID | None = None) -> None:
-        if uuid is None:
-            uuid = UUID(
-                bytes=hashlib.md5(
-                    f"OfflineUser:{name}".encode(), usedforsecurity=False
-                ).digest()
-            )
+    def __init__(self, name: str) -> None:
         self.name = name
-        self.uuid = uuid
+        self.uuid = UUID(
+            bytes=hashlib.md5(
+                f"OfflineUser:{name}".encode(), usedforsecurity=False
+            ).digest()
+        )
         self.access_token: str | None = None
 
     @property
     def auth_header(self) -> dict[str, str]:
-        if self.access_token is None:
-            return {}
+        assert self.access_token is not None
         return {"authorization": self.access_token}
 
     async def login(self, client: AsyncTestClient) -> Self:
@@ -129,13 +125,3 @@ async def users(client: AsyncTestClient) -> list[TestUser]:
         for u in users:
             tg.create_task(u.login(client))
     return users
-
-
-@pytest.fixture
-def steve_uri(request: pytest.FixtureRequest, httpx_mock: HTTPXMock) -> str | Path:
-    uri: tuple[str, Path] | Path = request.param
-    if isinstance(uri, tuple):
-        url, path = uri
-        httpx_mock.add_response(url=url, content=path.read_bytes())
-        return url
-    return uri
