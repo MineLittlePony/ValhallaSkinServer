@@ -29,11 +29,11 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 import valhalla
 
 from . import api, auth
-from .auth import OAuthConfig, OAuthPlugin
 from .config import Settings
 from .github import github_url
 from .middleware.https_redirect import HttpsRedirectMiddleware
 from .models import Base, User
+from .plugins.auth import OAuthConfig, OAuthPlugin
 
 
 def create_app(config: Settings | None = None) -> Litestar:
