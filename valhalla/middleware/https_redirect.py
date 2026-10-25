@@ -1,5 +1,5 @@
 from litestar import status_codes
-from litestar.datastructures import URL
+from litestar.datastructures import URL, Headers
 from litestar.middleware import ASGIMiddleware
 from litestar.response.redirect import ASGIRedirectResponse
 from litestar.types import ASGIApp, Receive, Scope, Send
@@ -27,5 +27,8 @@ class HttpsRedirectMiddleware(ASGIMiddleware):
         await next_app(scope, receive, send)
 
     def is_localhost(self, scope: Scope) -> int | None:
-        host = (scope["server"] or (None, None))[0]
-        return host in (None, "127.0.0.1", "::1")
+        headers = Headers.from_scope(scope)
+        host = headers.get("host")
+        return host is not None and (
+            host in ("127.0.0.1", "::1") or host.endswith((".localhost", ".local"))
+        )
