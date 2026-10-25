@@ -203,7 +203,7 @@ async def test_https_redirect(client: AsyncTestClient) -> None:
         follow_redirects=False,
         headers={"host": "skins.minelittlepony-mod.com"},
     )
-    assert resp.status_code == 308
+    assert resp.status_code == 307
     assert resp.has_redirect_location
     assert resp.headers["location"] == "https://skins.minelittlepony-mod.com/"
 
