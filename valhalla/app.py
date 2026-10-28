@@ -33,6 +33,7 @@ import valhalla
 from . import api, auth
 from .config import Settings
 from .github import github_url
+from .logging import init_logger
 from .middleware.https_redirect import HttpsRedirectMiddleware
 from .models import Base, User
 from .plugins.auth import OAuthConfig, OAuthPlugin
@@ -48,6 +49,8 @@ def create_app(config: Settings | None = None) -> Litestar:
             "user_info": True,
         },
     )
+
+    init_logger()
 
     async def on_startup(app: Litestar) -> None:
         if config.online_mode is False:
