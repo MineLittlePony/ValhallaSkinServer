@@ -34,6 +34,7 @@ class OAuthConfig[UserT: BaseUser = BaseUser]:
     route_prefix: str = ""
     login_url: str = "/auth/{name}"
     callback_url: str = "/auth/{name}/callback"
+    callback_redirect_name: str = "index"
     opt: dict[str, Any] = field(default_factory=lambda: {"exclude_from_auth": True})
     tags: list[str] = field(default_factory=list)
 
@@ -120,7 +121,11 @@ Response is subject to change.
             user = await config.retrieve_user_info(request, userinfo)
 
             jwt: JWTCookieAuth = request.app.state.jwt
-            return jwt.login(str(user.uuid), send_token_as_response_body=True)
+            resp = jwt.login(
+                str(user.uuid), response_status_code=status_codes.HTTP_302_FOUND
+            )
+            resp.headers["location"] = request.url_for(config.callback_redirect_name)
+            return resp
 
         return Router(
             config.route_prefix,

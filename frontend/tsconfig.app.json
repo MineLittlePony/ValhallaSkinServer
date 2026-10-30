@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "target": "es2023",
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "lib": ["ES2023", "DOM"],
+    "moduleDetection": "force",
+    "module": "esnext",
+
+    "moduleResolution": "bundler",
+    "types": ["preact", "vite/client"],
+    "allowArbitraryExtensions": true,
+    "allowImportingTsExtensions": true,
+
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noEmit": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+    "skipLibCheck": true
+  },
+  "include": ["src"]
+}

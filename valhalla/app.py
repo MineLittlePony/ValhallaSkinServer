@@ -63,7 +63,7 @@ def create_app(config: Settings | None = None) -> Litestar:
             sts_client = boto3.client("sts")
             sts_client.get_caller_identity()
 
-    @get("/", include_in_schema=False, exclude_from_auth=True)
+    @get("/", name="index", include_in_schema=False, exclude_from_auth=True)
     async def index() -> Redirect:
         return Redirect(github_url())
 

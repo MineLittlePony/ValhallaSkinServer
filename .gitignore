@@ -18,3 +18,5 @@ node_modules/
 coverage.xml
 
 .*cache
+
+.zed/

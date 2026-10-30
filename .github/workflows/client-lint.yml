@@ -1,0 +1,23 @@
+name: client-lint
+
+on: [push]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Install pnpm
+      uses: pnpm/setup@v3
+      with:
+        working-directory: frontend
+        cache: true
+
+    - name: Lint with ruff
+      run: pnpm eslint
+      working-directory: frontend
+
+    - name: Type checks
+      run: pnpm tsc --build --verbose
+      working-directory: frontend

@@ -1,0 +1,30 @@
+:root {
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --button-active: theme('colors.emerald.500');
+    --button-border: theme('colors.emerald.500');
+    --button-bg: theme('colors.emerald.400');
+    --button-fg: theme('colors.slate.800');
+  }
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --button-active: theme('colors.rose.400');
+    --button-border: theme('colors.rose.400');
+    --button-bg: theme('colors.rose.300');
+    --button-fg: theme('colors.slate.900');
+  }
+}
+
+.btn {
+  @apply px-4 py-2
+        border-2
+        rounded-2
+        /* Themed stuff */
+        bg-$button-bg
+        border-$button-border
+        text-$button-fg
+        '@hover:bg-$button-active';
+}
