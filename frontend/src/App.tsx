@@ -35,6 +35,14 @@ function App() {
             error: () => <Link icon="i-line-md:login" href="/api/v1/auth/xbox">Sign in</Link>,
             success: () => <Link icon="i-line-md:logout" href="/api/v1/auth/logout">Sign out</Link>,
           }[textureData.state]()}
+          <div class="flex-grow"></div>
+          <Link
+            icon="i-line-md:github"
+            class="text-lg"
+            href="https://github.com/MineLittlePony/ValhallaSkinServer"
+            aria-label="View Website on GitHub"
+          >
+          </Link>
         </header>
         <main>
           {textureData.state === 'success'

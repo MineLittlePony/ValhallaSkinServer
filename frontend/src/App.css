@@ -3,28 +3,28 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --button-active: theme('colors.emerald.500');
-    --button-border: theme('colors.emerald.500');
-    --button-bg: theme('colors.emerald.400');
-    --button-fg: theme('colors.slate.800');
+    --button-active: theme('colors.blue.600');
+    --button-border: theme('colors.blue.500');
+    --button-bg: transparent;
+    --button-fg: theme('colors.slate.100');
   }
 }
 @media (prefers-color-scheme: light) {
   :root {
     --button-active: theme('colors.rose.400');
     --button-border: theme('colors.rose.400');
-    --button-bg: theme('colors.rose.300');
+    --button-bg: transparent;
     --button-fg: theme('colors.slate.900');
   }
 }
 
 .btn {
-  @apply px-4 py-2
-        border-2
-        rounded-2
+  @apply px-2 py-1
+        border
+        rounded-1
         /* Themed stuff */
         bg-$button-bg
         border-$button-border
         text-$button-fg
-        '@hover:bg-$button-active';
+        @hover:bg-$button-active;
 }
