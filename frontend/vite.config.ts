@@ -6,7 +6,10 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [
     preact({
-      prerender: { enabled: true },
+      prerender: {
+        enabled: true,
+        renderTarget: '#root',
+      },
     }),
     UnoCSS(),
   ],
