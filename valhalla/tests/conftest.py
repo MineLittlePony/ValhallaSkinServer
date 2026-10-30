@@ -27,20 +27,21 @@ async_engine = create_async_engine(
 )
 
 
-class TestConfig(Settings):
+class ConfigTest(Settings):
     model_config = SettingsConfigDict(
         env_file=None,
         toml_file=None,
     )
 
 
-settings = TestConfig(
+settings = ConfigTest(
     secret_key=secrets.token_urlsafe(24),
     database_url=str(async_engine.url),
     online_mode=False,
     textures_path=os.path.join(tempdir, "textures"),
     textures_url=None,
     server_id="testing",
+    frontend_enabled=False,
 )
 
 

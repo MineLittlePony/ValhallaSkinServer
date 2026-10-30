@@ -5,9 +5,10 @@ import boto3
 import pytest
 from moto import mock_aws
 
-from valhalla.config import Settings
 from valhalla.files import get_save_path
 from valhalla.s3path import S3Path
+
+from .conftest import ConfigTest
 
 
 @pytest.fixture(autouse=True)
@@ -29,7 +30,7 @@ def aws() -> Generator[None]:
 
 def test_filesystem() -> None:
     fs = get_save_path(
-        Settings(
+        ConfigTest(
             textures_bucket="test",
             textures_path="path",
             s3_bucket_content_type="text/txt",

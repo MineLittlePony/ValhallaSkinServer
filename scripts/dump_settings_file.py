@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+import os.path
 from enum import Enum
 from pathlib import Path
 from types import NoneType
@@ -26,6 +27,8 @@ def main() -> None:
 
 def python_to_tomlkit(val: object) -> Item:
     match val:
+        case os.PathLike():
+            return tomlkit.string(os.fspath(val))
         case str():
             return tomlkit.string(val)
         case bool():
@@ -103,9 +106,11 @@ def write_table(model: type[BaseModel]) -> tomlkit.TOMLDocument:
         if write_documented_item(obj, name, model, f2):
             table_encountered = True
         elif table_encountered:
+            tname, _ = obj.popitem()
             raise RuntimeError(
-                "Encountered non-root value after a table. This would result in a"
-                " badly formatted toml file."
+                f"Encountered root field {name!r} after a table [{tname}]."
+                " This would result in a badly formatted toml file."
+                f" HINT: rearrange the fields in {model} so {tname!r} appears last."
             )
     return obj
 

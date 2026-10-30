@@ -1,4 +1,5 @@
 import secrets
+from pathlib import Path
 from typing import Literal, override
 from urllib.parse import urljoin, urlparse
 
@@ -140,6 +141,9 @@ If empty, will assume same origin.
     aws_access_key_id: str | None = None
     aws_secret_access_key: str | None = None
     verify_aws_credentials: bool = Field(default=True, exclude=True)
+
+    frontend_enabled: bool = True
+    frontend_dist_directory: Path = Path("frontend/dist")
 
     def get_database_url(self) -> str:
         return resolve_db(self.database_url)

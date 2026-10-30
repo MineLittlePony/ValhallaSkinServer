@@ -32,6 +32,7 @@ import valhalla
 
 from . import api, auth
 from .config import Settings
+from .frontend import create_frontend_router
 from .github import github_url
 from .logging import init_logger
 from .middleware.https_redirect import HttpsRedirectMiddleware
@@ -63,15 +64,15 @@ def create_app(config: Settings | None = None) -> Litestar:
             sts_client = boto3.client("sts")
             sts_client.get_caller_identity()
 
-    @get("/", name="index", include_in_schema=False, exclude_from_auth=True)
+    @get("/", name="index", include_in_schema=False)
     async def index() -> Redirect:
         return Redirect(github_url())
 
-    @get("/__debug__", exclude_from_auth=True, include_in_schema=False)
+    @get("/__debug__", include_in_schema=False)
     async def debug(request: Request) -> dict[str, Any]:
         return {
             "type": request.scope["type"],
-            "asgi": request.scope["asgi"],
+            "asgi": request.scope.get("asgi"),
             "http_version": request.scope["http_version"],
             "server": request.scope["server"],
             "client": request.scope["client"],
@@ -85,6 +86,13 @@ def create_app(config: Settings | None = None) -> Litestar:
         }
 
     static_files = []
+    if config.frontend_enabled:
+        static_files.append(
+            create_frontend_router(directory=config.frontend_dist_directory)
+        )
+    else:
+        static_files.append(index)
+
     if config.textures_bucket is None:
         os.makedirs(config.textures_path, exist_ok=True)
         static_files.append(
@@ -121,11 +129,8 @@ def create_app(config: Settings | None = None) -> Litestar:
     jwt_auth = JWTCookieAuth[User](
         token_secret=config.secret_key,
         retrieve_user_handler=auth.user_from_token,
-        exclude=[
-            "^/docs",
-            "^/textures",
-        ],
     )
+    api.router.middleware.append(jwt_auth.middleware)
 
     session_backend = CookieBackendConfig(
         secret=hashlib.sha256(config.secret_key.encode()).digest()
@@ -148,7 +153,6 @@ def create_app(config: Settings | None = None) -> Litestar:
 
     return Litestar(
         route_handlers=[
-            index,
             debug,
             *static_files,
             api.router,
@@ -176,7 +180,6 @@ def create_app(config: Settings | None = None) -> Litestar:
         middleware=[
             HttpsRedirectMiddleware(),
             session_backend.middleware,
-            jwt_auth.middleware,
         ],
         state=State(
             {
