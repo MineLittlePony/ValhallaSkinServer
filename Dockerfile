@@ -22,9 +22,27 @@ COPY migrations migrations
 
 RUN uv sync
 
+FROM node:26 AS frontend
+# Install pnpm from ghcr
+COPY --from=ghcr.io/pnpm/pnpm:12 /opt/pnpm /opt/pnpm
+RUN for bin in pnpm pn pnpx pnx; do ln -s "/opt/pnpm/$bin" "/usr/local/bin/$bin"; done
+
+WORKDIR /app/frontend
+
+# Install packages
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
+RUN pnpm install
+
+# Copy files over
+COPY frontend/ ./
+
+# Build the app
+RUN pnpm build
+
 FROM python_base
 
 COPY --from=builder /app /app
+COPY --from=frontend /app/frontend/dist /app/frontend/dist
 
 ENV PATH=$PATH:/app/.venv/bin \
     LITESTAR_APP=valhalla.app:create_app
