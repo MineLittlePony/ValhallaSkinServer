@@ -175,6 +175,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      ofetch:
+        specifier: ^1.5.1
+        version: 1.5.1
       preact:
         specifier: ^11.1.0
         version: 11.1.0
