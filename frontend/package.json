@@ -38,6 +38,7 @@
     "eslint-plugin-format": "^2.0.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
+    "preact-iso": "^2.12.2",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.2",
     "unocss": "^66.11.0",

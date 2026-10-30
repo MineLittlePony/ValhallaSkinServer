@@ -1,7 +1,13 @@
-import * as preact from 'preact'
+import { hydrate, prerender as ssr } from 'preact-iso'
 import App from './App.tsx'
 
 import 'virtual:uno.css'
 import '@unocss/reset/tailwind.css'
 
-preact.render(<App />, document.getElementById('root')!)
+if (typeof window !== 'undefined') {
+  hydrate(<App />, document.getElementById('root')!)
+}
+
+export async function prerender(data: any) {
+  return await ssr(<App {...data} />)
+}

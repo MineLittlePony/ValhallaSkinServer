@@ -180,7 +180,7 @@ importers:
         version: 1.5.1
       preact:
         specifier: ^11.1.0
-        version: 11.1.0
+        version: 11.1.0(preact-render-to-string@6.8.2)
     devDependencies:
       '@antfu/eslint-config':
         specifier: ^10.0.0
@@ -212,6 +212,9 @@ importers:
       node:
         specifier: runtime:^26
         version: runtime:26.13.0
+      preact-iso:
+        specifier: ^2.12.2
+        version: 2.12.2(preact-render-to-string@6.8.2)(preact@11.1.0)
       typescript:
         specifier: ~6.0.3
         version: 6.0.3
@@ -2545,6 +2548,17 @@ packages:
     resolution: {integrity: sha512-LJlKCCAUFKOuZxipUdYw1NzIITEsPcgyOG9LkvRJvuKj/bRzbuRY0ARXvL0pWGpsZvn8jku+LMep2eU0seHp8g==}
     engines: {node: ^10 || ^12 || >=14}
 
+  preact-iso@2.12.2:
+    resolution: {integrity: sha512-qit+qSMiZ41K0EQkLNa3MSxnWVCm5yXvy9m3CcGf/zF1QhVJzSwVCbpiz52VSbWpg8v8nYNIYDrXJZPNFpM1uw==}
+    peerDependencies:
+      preact: '>=10 || >= 11.0.0-0'
+      preact-render-to-string: '>=6.4.0'
+
+  preact-render-to-string@6.8.2:
+    resolution: {integrity: sha512-Hdx7cKD3AMYgt795TdddBpUbuGEFoL/VeA6s7VrBt9Gjt0r6rCy5wMp5xkDjQ9cbKj62frHsEx1x8yV6EjoOpg==}
+    peerDependencies:
+      preact: '>=10 || >= 11.0.0-0'
+
   preact@11.1.0:
     resolution: {integrity: sha512-hz1VsjWx5pSYPDVEzb9w+XyOmQpP1qW/ZEaMiYm+C8ykJr8KP+TKGZIbCW0QmZ/Yr/jg3XkZoziEWn9iWHZ9Mw==}
     peerDependencies:
@@ -3525,7 +3539,7 @@ snapshots:
 
   '@prefresh/core@1.5.11(preact@11.1.0)':
     dependencies:
-      preact: 11.1.0
+      preact: 11.1.0(preact-render-to-string@6.8.2)
 
   '@prefresh/utils@1.2.1': {}
 
@@ -3536,7 +3550,7 @@ snapshots:
       '@prefresh/core': 1.5.11(preact@11.1.0)
       '@prefresh/utils': 1.2.1
       '@rollup/pluginutils': 4.2.1
-      preact: 11.1.0
+      preact: 11.1.0(preact-render-to-string@6.8.2)
       vite: 8.3.5(@types/node@24.19.2)(jiti@2.7.0)(yaml@2.9.1)
     transitivePeerDependencies:
       - supports-color
@@ -5351,7 +5365,18 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.2
 
-  preact@11.1.0: {}
+  preact-iso@2.12.2(preact-render-to-string@6.8.2)(preact@11.1.0):
+    dependencies:
+      preact: 11.1.0(preact-render-to-string@6.8.2)
+      preact-render-to-string: 6.8.2(preact@11.1.0)
+
+  preact-render-to-string@6.8.2(preact@11.1.0):
+    dependencies:
+      preact: 11.1.0(preact-render-to-string@6.8.2)
+
+  preact@11.1.0(preact-render-to-string@6.8.2):
+    optionalDependencies:
+      preact-render-to-string: 6.8.2(preact@11.1.0)
 
   prelude-ls@1.2.1: {}
 
