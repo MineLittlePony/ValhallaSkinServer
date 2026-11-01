@@ -85,17 +85,18 @@ def create_app(config: Settings | None = None) -> Litestar:
             "path_template": request.scope["path_template"],
         }
 
-    static_files = []
+    route_handlers = [api.router, debug]
+
     if config.frontend_enabled:
-        static_files.append(
+        route_handlers.append(
             create_frontend_router(directory=config.frontend_dist_directory)
         )
     else:
-        static_files.append(index)
+        route_handlers.append(index)
 
     if config.textures_bucket is None:
         os.makedirs(config.textures_path, exist_ok=True)
-        static_files.append(
+        route_handlers.append(
             create_static_files_router(
                 path="/textures",
                 directories=[config.textures_path],
@@ -152,11 +153,7 @@ def create_app(config: Settings | None = None) -> Litestar:
         return request.state["config"]
 
     return Litestar(
-        route_handlers=[
-            debug,
-            *static_files,
-            api.router,
-        ],
+        route_handlers=route_handlers,
         openapi_config=OpenAPIConfig(
             path="/docs",
             title="Valhalla Skin Server",
