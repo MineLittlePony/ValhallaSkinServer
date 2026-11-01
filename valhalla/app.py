@@ -146,6 +146,7 @@ def create_app(config: Settings | None = None) -> Litestar:
             client_kwargs=config.xbox_live_client_kwargs,
             route_prefix="/api/v1",
             retrieve_user_info=auth.login_with_xbox_userinfo,
+            post_callback_redirect_name="index",
             tags=["Authentication"],
         )
 

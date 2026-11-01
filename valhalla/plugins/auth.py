@@ -1,5 +1,5 @@
-from collections.abc import Awaitable, Callable, Mapping
-from dataclasses import dataclass, field
+from collections.abc import Awaitable, Callable, Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any, Protocol, TypedDict, override
 from uuid import UUID
 
@@ -8,9 +8,10 @@ from authlib.oidc.core import UserInfo
 from litestar import Litestar, Request, Response, Router, get, status_codes
 from litestar.config.app import AppConfig
 from litestar.exceptions import PermissionDeniedException
-from litestar.openapi import ResponseSpec
+from litestar.openapi.spec import SecurityRequirement
 from litestar.plugins import InitPlugin
 from litestar.security.jwt import JWTCookieAuth
+from litestar.types import Dependencies, Guard, Middleware
 
 from valhalla.authlib import OAuth
 from valhalla.authlib.apps import LitestarOAuth1App, LitestarOAuth2App
@@ -20,7 +21,7 @@ class BaseUser(Protocol):
     uuid: UUID
 
 
-@dataclass
+@dataclass(kw_only=True)
 class OAuthConfig[UserT: BaseUser = BaseUser]:
     # oauth metadata
     server_metadata_url: str
@@ -34,9 +35,15 @@ class OAuthConfig[UserT: BaseUser = BaseUser]:
     route_prefix: str = ""
     login_url: str = "/auth/{name}"
     callback_url: str = "/auth/{name}/callback"
-    callback_redirect_name: str = "index"
-    opt: dict[str, Any] = field(default_factory=lambda: {"exclude_from_auth": True})
-    tags: list[str] = field(default_factory=list)
+    post_callback_redirect_name: str
+
+    # route metadata
+    dependencies: Dependencies | None = None
+    security: Sequence[SecurityRequirement] | None = None
+    guards: Sequence[Guard] | None = None
+    middleware: Sequence[Middleware] | None = None
+    opt: Mapping[str, Any] | None = None
+    tags: Sequence[str] | None = None
 
 
 class AuthCallbackResponse(TypedDict):
@@ -86,8 +93,6 @@ class OAuthPlugin[UserT: BaseUser = BaseUser](InitPlugin):
             name=f"authlib_{name}_login",
             summary=f"Login for {name.title()}",
             description=f"Start the login flow for {name.title()}",
-            tags=config.tags,
-            opt=config.opt,
         )
         async def login_handler(request: Request) -> Response:
             redirect_uri = request.url_for(f"authlib_{name}_callback")
@@ -95,6 +100,7 @@ class OAuthPlugin[UserT: BaseUser = BaseUser](InitPlugin):
 
         @get(
             config.callback_url.format(name=name),
+            status_code=status_codes.HTTP_302_FOUND,
             name=f"authlib_{name}_callback",
             summary=f"Login Callback for {name.title()}",
             description=f"""
@@ -102,15 +108,6 @@ Called automatically by the {name.title()} OAuth flow.
 
 Response is subject to change.
             """,
-            tags=config.tags,
-            opt=config.opt,
-            responses={
-                status_codes.HTTP_200_OK: ResponseSpec(
-                    data_container=AuthCallbackResponse,
-                    generate_examples=False,
-                    description="Request fulfilled, document follows",
-                )
-            },
         )
         async def login_callback(request: Request) -> Response:
             try:
@@ -124,7 +121,9 @@ Response is subject to change.
             resp = jwt.login(
                 str(user.uuid), response_status_code=status_codes.HTTP_302_FOUND
             )
-            resp.headers["location"] = request.url_for(config.callback_redirect_name)
+            resp.headers["location"] = request.url_for(
+                config.post_callback_redirect_name
+            )
             return resp
 
         return Router(
@@ -133,4 +132,10 @@ Response is subject to change.
                 login_handler,
                 login_callback,
             ],
+            dependencies=config.dependencies,
+            security=config.security,
+            guards=config.guards,
+            middleware=config.middleware,
+            opt=config.opt,
+            tags=config.tags,
         )
