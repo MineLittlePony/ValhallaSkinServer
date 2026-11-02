@@ -2,14 +2,14 @@
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "target": "es2023",
-    "jsx": "react-jsx",
-    "jsxImportSource": "preact",
+    "jsx": "preserve",
+    "jsxImportSource": "vue",
     "lib": ["ES2023", "DOM"],
     "moduleDetection": "force",
     "module": "esnext",
 
     "moduleResolution": "bundler",
-    "types": ["preact", "vite/client"],
+    "types": ["vite/client"],
     "allowArbitraryExtensions": true,
     "allowImportingTsExtensions": true,
 

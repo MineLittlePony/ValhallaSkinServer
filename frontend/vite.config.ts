@@ -1,16 +1,11 @@
-import preact from '@preact/preset-vite'
+import VuePlugin from '@vitejs/plugin-vue'
 import UnoCSS from 'unocss/vite'
 import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    preact({
-      prerender: {
-        enabled: true,
-        renderTarget: '#root',
-      },
-    }),
+    VuePlugin(),
     UnoCSS(),
   ],
   appType: 'mpa',

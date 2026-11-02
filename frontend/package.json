@@ -24,21 +24,18 @@
   "dependencies": {
     "@iconify-json/line-md": "^1.2.16",
     "@unocss/reset": "^66.12.0",
+    "@vueuse/core": "^15.0.0",
     "clsx": "^2.1.1",
     "ofetch": "^1.5.1",
-    "preact": "^11.1.0"
+    "vue": "^3.5.44"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^10.0.0",
-    "@eslint-react/eslint-plugin": "^5.28.6",
-    "@preact/preset-vite": "^2.10.6",
     "@types/node": "^24.19.2",
     "@unocss/eslint-plugin": "^66.11.0",
+    "@vitejs/plugin-vue": "^6.0.10",
     "eslint": "^10.13.0",
     "eslint-plugin-format": "^2.0.1",
-    "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-refresh": "^0.5.7",
-    "preact-iso": "^2.12.2",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.2",
     "unocss": "^66.11.0",
