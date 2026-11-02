@@ -1,11 +1,7 @@
 <script setup lang="ts">
-import type { icons } from '@iconify-json/line-md/icons.json'
-
-type Icons = `i-line-md:${keyof typeof icons}` | (string & {})
-
-const { href, icon, role = 'link' } = defineProps <{
+const { href, icon, role = 'link' } = defineProps<{
   href: string
-  icon?: Icons
+  icon?: string
   role?: string
 }>()
 </script>

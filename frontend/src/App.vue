@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useFetch } from '@vueuse/core'
-import clsx from 'clsx'
 
 import Link from './Link.vue'
 import CharacterRenderer from './renderer/CharacterRenderer.vue'
@@ -13,16 +12,11 @@ type Textures = Record<SkinType, {
   metadata: Record<string, string>
 }>
 
-const rootClass = clsx(
-  'dark:bg-stone-800 light:bg-slate-300 dark:text-neutral-200 light:text-neutral-800',
-  'grid grid-rows-[auto_1fr_auto] min-h-screen *:px-4 *:py-2',
-)
-
 const { isFetching, data, error } = useFetch('/api/v1/textures').json<Textures>()
 </script>
 
 <template>
-  <div :class="rootClass">
+  <div class="grid grid-rows-[auto_1fr_auto] min-h-screen dark:bg-stone-800 light:bg-slate-300 *:px-4 *:py-2 dark:text-neutral-200 light:text-neutral-800">
     <header class="flex items-center gap-4 rounded-lb-xl rounded-rb-xl dark:bg-zinc-900 light:bg-stone-100">
       <Link icon="i-line-md:home" href="https://minelittlepony-mod.com/">
         Home
