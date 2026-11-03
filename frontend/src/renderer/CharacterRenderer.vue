@@ -54,7 +54,7 @@ watch(angles, (angles) => {
 })
 
 watch(canvas, (canvas) => {
-  if (canvas !== undefined) {
+  if (canvas !== null) {
     initMeshes(canvas)
   }
 }, { once: true })
