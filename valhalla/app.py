@@ -25,7 +25,6 @@ from litestar.security.jwt import JWTCookieAuth
 from litestar.static_files import create_static_files_router
 from litestar.stores.base import Store
 from litestar.stores.valkey import ValkeyStore
-from sentry_sdk.integrations.logging import LoggingIntegration
 from valkey.asyncio import ConnectionPool, Valkey
 
 import valhalla
@@ -45,7 +44,6 @@ def create_app(config: Settings | None = None) -> Litestar:
         config = Settings()
     sentry_sdk.init(
         dsn=config.sentry_dsn,
-        integrations=[LoggingIntegration(capture_sentry_logs=True)],
         data_collection={
             "user_info": True,
         },
