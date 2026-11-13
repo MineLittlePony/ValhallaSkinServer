@@ -28,6 +28,8 @@ async_engine = create_async_engine(
 
 
 class TestConfig(Settings):
+    secret_key: str = "testsecret"
+
     model_config = SettingsConfigDict(
         env_file=None,
         toml_file=None,
