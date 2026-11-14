@@ -1,51 +1,39 @@
 import json
 from io import BytesIO
 from pathlib import Path
+from typing import override
 from uuid import UUID
 
 import pytest
 from litestar.testing import AsyncTestClient
-from pytest_httpx import HTTPXMock
+from respx import MockRouter
 
 from .conftest import TestUser, assets, settings
 
+
+class MockPath(Path):
+    _bytes = None
+
+    @override
+    def read_bytes(self) -> bytes:
+        if self._bytes is None:
+            self._bytes = super().read_bytes()
+        return self._bytes
+
+
 textures_url = "http://testserver.local/textures/"
-steve_file = assets / "good/64x64.png"
+steve_file = MockPath(assets / "good/64x64.png")
 steve_url = "https://assets.mojang.com/SkinTemplates/steve.png"
 steve_hash = textures_url + steve_file.with_suffix(".txt").read_text().strip()
 
 
-def build_request_kwargs(file: str | Path) -> tuple[str, dict]:
-    if isinstance(file, Path):
-        return "PUT", {
-            "data": {"type": "skin"},
-            "files": {"file": (file.name, file.read_bytes(), "image/png")},
-        }
-    return "POST", {
-        "json": {"file": file, "type": "skin"},
-    }
+@pytest.fixture(name="image_url")
+def _mock_image_url(httpx2_mock: MockRouter) -> None:
+    httpx2_mock.head(steve_url).respond(content=steve_file.read_bytes())
+    httpx2_mock.get(steve_url).respond(content=steve_file.read_bytes())
 
 
-@pytest.mark.parametrize(
-    "steve_uri",
-    [(steve_url, steve_file), steve_file],
-)
-@pytest.mark.httpx_mock(can_send_already_matched_responses=True)
-async def test_texture_upload_post(
-    steve_uri: Path | tuple[str, Path] | str,
-    client: AsyncTestClient,
-    user: TestUser,
-    httpx_mock: HTTPXMock,
-) -> None:
-    if isinstance(steve_uri, tuple):
-        steve_uri, file = steve_uri
-        httpx_mock.add_response(url=steve_uri, content=file.read_bytes())
-    method, kwargs = build_request_kwargs(steve_uri)
-    upload_resp = await client.request(
-        method, "/api/v1/textures", headers=user.auth_header, **kwargs
-    )
-    assert upload_resp.status_code == 204, upload_resp.content
-
+async def _test_texture_upload_verify(client: AsyncTestClient, user: TestUser) -> None:
     user_resp = await client.get("/api/v1/textures", headers=user.auth_header)
     assert user_resp.status_code == 200, user_resp.json()
     textures = user_resp.json()
@@ -67,6 +55,29 @@ async def test_texture_upload_post(
     assert byname_resp.json()["textures"] == textures
 
 
+async def test_texture_upload_file(client: AsyncTestClient, user: TestUser) -> None:
+    upload_resp = await client.put(
+        "/api/v1/textures",
+        headers=user.auth_header,
+        files={"file": (steve_file.name, steve_file.read_bytes(), "image/png")},
+    )
+    assert upload_resp.status_code == 204, upload_resp.content
+
+    await _test_texture_upload_verify(client, user)
+
+
+@pytest.mark.usefixtures("image_url")
+async def test_texture_upload_url(client: AsyncTestClient, user: TestUser) -> None:
+    upload_resp = await client.post(
+        "/api/v1/textures",
+        headers=user.auth_header,
+        json={"type": "skin", "file": steve_url},
+    )
+    assert upload_resp.status_code == 204, upload_resp.content
+
+    await _test_texture_upload_verify(client, user)
+
+
 async def test_unknown_user_textures(client: AsyncTestClient) -> None:
     user = TestUser("UnknownUserName")
     resp = await client.get(f"/api/v1/user/{user.uuid}")
@@ -75,16 +86,20 @@ async def test_unknown_user_textures(client: AsyncTestClient) -> None:
     assert resp.status_code == 404
 
 
-@pytest.mark.parametrize(
-    "steve_uri",
-    [steve_url, steve_file],
-)
-@pytest.mark.httpx_mock(can_send_already_matched_responses=True)
-async def test_unauthenticated_user_texture_upload(
-    steve_uri: str, client: AsyncTestClient
+async def test_unauthenticated_user_texture_upload_file(
+    client: AsyncTestClient,
 ) -> None:
-    method, kwargs = build_request_kwargs(steve_uri)
-    upload_resp = await client.request(method, "/api/v1/textures", **kwargs)
+    upload_resp = await client.put(
+        "/api/v1/textures",
+        files={"file": (steve_file.name, steve_file.read_bytes(), "image/png")},
+    )
+    assert upload_resp.status_code == 401, upload_resp.json()
+
+
+async def test_unauthenticated_user_texture_upload_url(client: AsyncTestClient) -> None:
+    upload_resp = await client.post(
+        "/api/v1/textures", json={"type": "skin", "file": steve_url}
+    )
     assert upload_resp.status_code == 401, upload_resp.json()
 
 
@@ -166,21 +181,21 @@ async def test_skin_delete(client: AsyncTestClient, user: TestUser) -> None:
 
 
 async def test_multiple_users_with_same_name(
-    httpx_mock: HTTPXMock,
+    httpx2_mock: MockRouter,
     monkeypatch: pytest.MonkeyPatch,
     client: AsyncTestClient,
 ) -> None:
     uuid = UUID("526d5b75-3b09-47fb-8f91-1efc8d2523a4")
 
     monkeypatch.setattr(settings, "online_mode", True)
-    httpx_mock.add_response(
-        method="GET",
+    httpx2_mock.get(
         url=f"https://sessionserver.mojang.com/session/minecraft/hasJoined?username=username&serverId={settings.server_id}",
+    ).respond(
         json={"id": str(uuid), "name": "username"},
     )
-    httpx_mock.add_response(
-        method="GET",
+    httpx2_mock.get(
         url=f"https://sessionserver.mojang.com/session/minecraft/hasJoined?username=UserName&serverId={settings.server_id}",
+    ).respond(
         json={"id": str(uuid), "name": "UserName"},
     )
 

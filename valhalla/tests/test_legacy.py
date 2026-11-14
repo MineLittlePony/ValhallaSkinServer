@@ -1,81 +1,64 @@
-from pathlib import Path
 from uuid import uuid4
 
 import pytest
 from httpx2 import AsyncClient
-from pytest_httpx import HTTPXMock
+from respx import MockRouter
 
 from .conftest import TestUser
 from .test_app import steve_file, steve_hash, steve_url
 
 
-def build_request_kwargs(file: str | Path) -> tuple[str, dict]:
-    if isinstance(file, Path):
-        return "PUT", {
-            "files": {"file": (file.name, file.open("rb"), "image/png")},
-        }
-    return "POST", {
-        "data": {"file": file},
-    }
+@pytest.fixture(name="image_url")
+def _mock_image_url(httpx2_mock: MockRouter) -> None:
+    httpx2_mock.head(steve_url).respond(content=steve_file.read_bytes())
+    httpx2_mock.get(steve_url).respond(content=steve_file.read_bytes())
 
 
-@pytest.mark.parametrize(
-    "steve_uri",
-    [(steve_url, steve_file), steve_file],
-)
-@pytest.mark.httpx_mock(can_send_already_matched_responses=True)
-async def test_legacy_upload(
-    steve_uri: tuple[str, Path] | Path | str,
-    client: AsyncClient,
-    user: TestUser,
-    httpx_mock: HTTPXMock,
-) -> None:
-    if isinstance(steve_uri, tuple):
-        steve_uri, file = steve_uri
-        httpx_mock.add_response(url=steve_uri, content=file.read_bytes())
-    method, kwargs = build_request_kwargs(steve_uri)
-    resp = await client.request(
-        method, f"/api/v1/user/{user.uuid}/skin", headers=user.auth_header, **kwargs
+@pytest.mark.usefixtures("image_url")
+async def test_legacy_upload_file(client: AsyncClient, user: TestUser) -> None:
+    resp = await client.post(
+        f"/api/v1/user/{user.uuid}/skin",
+        headers=user.auth_header,
+        data={"file": steve_url},
     )
     assert resp.status_code == 204, resp.content
 
 
-@pytest.mark.parametrize(
-    "steve_uri",
-    [steve_url, steve_file],
-)
-@pytest.mark.httpx_mock(can_send_already_matched_responses=True)
-async def test_legacy_upload_wrong_user(
-    steve_uri: str | Path, client: AsyncClient, user: TestUser
+async def test_legacy_upload_uri(client: AsyncClient, user: TestUser) -> None:
+    content = steve_file.read_bytes()
+    resp = await client.put(
+        f"/api/v1/user/{user.uuid}/skin",
+        headers=user.auth_header,
+        files={"file": (steve_file.name, content, "image/png")},
+    )
+    assert resp.status_code == 204, resp.content
+
+
+# @pytest.mark.usefixtures("image_url")
+async def test_legacy_upload_wrong_user_url(
+    client: AsyncClient, user: TestUser
 ) -> None:
-    method, kwargs = build_request_kwargs(steve_uri)
-    resp = await client.request(
-        method, f"/api/v1/user/{uuid4()}/skin", headers=user.auth_header, **kwargs
+    resp = await client.post(
+        f"/api/v1/user/{uuid4()}/skin",
+        headers=user.auth_header,
+        data={"file": steve_url},
     )
     assert resp.status_code == 403, resp.json()
 
 
-@pytest.mark.parametrize(
-    "steve_uri",
-    [(steve_url, steve_file), steve_file],
-)
-@pytest.mark.httpx_mock(can_send_already_matched_responses=True)
-async def test_legacy_v0(
-    steve_uri: tuple[str, Path] | Path | str,
-    client: AsyncClient,
-    user: TestUser,
-    httpx_mock: HTTPXMock,
+async def test_legacy_upload_wrong_user_file(
+    client: AsyncClient, user: TestUser
 ) -> None:
-    if isinstance(steve_uri, tuple):
-        steve_uri, file = steve_uri
-        httpx_mock.add_response(url=steve_uri, content=file.read_bytes())
-    method, kwargs = build_request_kwargs(steve_uri)
-    resp = await client.request(
-        method, f"/api/user/{user.uuid}/skin", headers=user.auth_header, **kwargs
+    content = steve_file.read_bytes()
+    resp = await client.put(
+        f"/api/v1/user/{uuid4()}/skin",
+        headers=user.auth_header,
+        files={"file": (steve_file.name, content, "image/png")},
     )
-    assert resp.status_code == 200, resp.content
-    assert resp.json() == {"message": "OK"}
+    assert resp.status_code == 403, resp.json()
 
+
+async def _test_legacy_v0_upload_verify(client: AsyncClient, user: TestUser) -> None:
     resp = await client.get(f"/api/user/{user.uuid}")
     assert resp.status_code == 200, resp.content
 
@@ -91,3 +74,32 @@ async def test_legacy_v0(
     assert resp.status_code == 200, resp.content
 
     assert "skin" not in resp.json()["textures"]
+
+
+async def test_legacy_v0_upload_file(client: AsyncClient, user: TestUser) -> None:
+    content = steve_file.read_bytes()
+    resp = await client.put(
+        f"/api/user/{user.uuid}/skin",
+        headers=user.auth_header,
+        files={"file": (steve_file.name, content, "image/png")},
+    )
+    assert resp.status_code == 200, resp.content
+    assert resp.json() == {"message": "OK"}
+
+    await _test_legacy_v0_upload_verify(client, user)
+
+
+@pytest.mark.usefixtures("image_url")
+async def test_legacy_v0_upload_url(
+    client: AsyncClient,
+    user: TestUser,
+) -> None:
+    resp = await client.post(
+        f"/api/user/{user.uuid}/skin",
+        headers=user.auth_header,
+        data={"file": steve_url},
+    )
+    assert resp.status_code == 200, resp.content
+    assert resp.json() == {"message": "OK"}
+
+    await _test_legacy_v0_upload_verify(client, user)
