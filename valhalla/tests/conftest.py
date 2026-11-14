@@ -5,7 +5,7 @@ import shutil
 import tempfile
 from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
-from typing import Literal, Self
+from typing import Final, Literal, Self
 from uuid import UUID
 
 import anyio
@@ -28,6 +28,8 @@ async_engine = create_async_engine(
 
 
 class TestConfig(Settings):
+    __test__: Final = False
+
     secret_key: str = "testsecret"
 
     model_config = SettingsConfigDict(
